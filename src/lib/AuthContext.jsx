@@ -1,9 +1,8 @@
 // @ts-nocheck
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { base44 } from '@/api/base44ClientSupabase';
 import { appParams } from '@/lib/app-params';
-import { auth, db } from '@/api/firebase';
-import { initTokenManager } from '@/firebase/tokenManager';
+import { supabase } from '@/api/supabase';
 
 
 const AuthContext = createContext();
@@ -56,18 +55,15 @@ export const AuthProvider = ({ children }) => {
   });
 
   useEffect(() => {
-    // Never leave the app on a blank screen if Firebase auth is slow/unreachable
+    // Never leave the app on a blank screen if Supabase auth is slow/unreachable
     const authBootTimeout = setTimeout(() => {
       setIsLoadingPublicSettings(false);
       setIsLoadingAuth(false);
       setAuthChecked(true);
     }, 10000);
 
-    // Initialize token session management (idle timeout, concurrency monitoring)
-    const cleanupTokenManager = initTokenManager();
-
-    // Listen for Firebase Auth state changes
-    const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
+    // Listen for Supabase Auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       const hasCachedUser = !!localStorage.getItem('base44_cached_user');
       if (!hasCachedUser) {
         setIsLoadingPublicSettings(true);
@@ -78,44 +74,35 @@ export const AuthProvider = ({ children }) => {
       const publicSettings = { id: appParams.appId || 'mock-app-id', public_settings: {} };
       setAppPublicSettings(publicSettings);
       
-      if (firebaseUser) {
+      if (session?.user) {
         try {
-          const token = await firebaseUser.getIdToken();
-          localStorage.setItem('base44_access_token', token);
+          const supabaseUser = session.user;
+          localStorage.setItem('base44_access_token', session.access_token);
 
-          // Tenant isolation: always resolve company_id for the CURRENT firebaseUser.uid.
-          // Never trust previously cached localStorage.company_id (it can belong to another admin).
-          const tokenResult = await firebaseUser.getIdTokenResult(true);
-          const claimedCompanyId = tokenResult.claims?.company_id;
-          let resolvedCompanyId = claimedCompanyId ? String(claimedCompanyId) : null;
+          // Get or resolve company_id from user metadata
+          let resolvedCompanyId = supabaseUser.user_metadata?.company_id ? String(supabaseUser.user_metadata.company_id) : null;
 
           if (!resolvedCompanyId) {
-            const { doc, getDoc, query, collection, where, getDocs } = await import("firebase/firestore");
-            
-            // Fallback 1: Safely validate existing cached company_id for this specific user
+            // Fallback 1: Check cached company_id
             const cachedCompanyId = localStorage.getItem('company_id');
             if (cachedCompanyId) {
-              const userDocSnap = await getDoc(doc(db, `companies/${cachedCompanyId}/users`, firebaseUser.uid));
-              if (userDocSnap.exists()) {
-                resolvedCompanyId = cachedCompanyId;
-              }
+              resolvedCompanyId = cachedCompanyId;
             }
-
-            // Fallback 2: Check if they are the owner via owner_uid
+            
+            // Fallback 2: Query users table for company_id
             if (!resolvedCompanyId) {
-              const q = query(collection(db, "companies"), where("owner_uid", "==", firebaseUser.uid));
-              const querySnapshot = await getDocs(q);
-              if (!querySnapshot.empty) {
-                resolvedCompanyId = querySnapshot.docs[0].id;
-              }
-            }
-
-            // Fallback 3: Check if they are the owner via admin_email
-            if (!resolvedCompanyId && firebaseUser.email) {
-              const emailQ = query(collection(db, "companies"), where("admin_email", "==", firebaseUser.email.toLowerCase()));
-              const emailSnap = await getDocs(emailQ);
-              if (!emailSnap.empty) {
-                resolvedCompanyId = emailSnap.docs[0].id;
+              try {
+                const { data: userRecord, error } = await supabase
+                  .from('users')
+                  .select('company_id')
+                  .eq('id', supabaseUser.id)
+                  .single();
+                
+                if (userRecord && userRecord.company_id) {
+                  resolvedCompanyId = userRecord.company_id;
+                }
+              } catch (e) {
+                console.warn("[v0] Error fetching user company_id:", e);
               }
             }
           }
@@ -137,7 +124,7 @@ export const AuthProvider = ({ children }) => {
               base44.entities.SensitiveFieldAccess.list()
             ]);
           } catch (e) {
-            console.error("Failed to load auth resources:", e);
+            console.error("[v0] Failed to load auth resources:", e);
             setAuthError({ type: 'load_failed', message: 'Failed to load authorization data. Please check your connection and reload.' });
             setIsLoadingPublicSettings(false);
             setIsLoadingAuth(false);
@@ -145,7 +132,7 @@ export const AuthProvider = ({ children }) => {
             return;
           }
 
-          let userRecord = usersList.find(u => u.id === firebaseUser.uid);
+          let userRecord = usersList.find(u => u.id === supabaseUser.id);
           
           if (!userRecord) {
             // First registered user is the owner, others are cashiers
@@ -154,21 +141,22 @@ export const AuthProvider = ({ children }) => {
             const defaultSalary = isFirstUser ? 150000 : 18000;
             
             userRecord = {
-              id: firebaseUser.uid,
-              name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
-              email: firebaseUser.email,
+              id: supabaseUser.id,
+              name: supabaseUser.user_metadata?.full_name || supabaseUser.email.split('@')[0],
+              email: supabaseUser.email,
               role_id: defaultRole,
               branch_id: null,
               is_active: true,
               assigned_by: null,
               assigned_at: new Date().toISOString(),
-              salary: defaultSalary
+              salary: defaultSalary,
+              company_id: resolvedCompanyId
             };
             
             try {
               await base44.entities.User.create(userRecord);
             } catch (e) {
-              console.error("Error creating user record:", e);
+              console.error("[v0] Error creating user record:", e);
             }
           }
           
@@ -179,8 +167,8 @@ export const AuthProvider = ({ children }) => {
             setIsAuthenticated(false);
             localStorage.removeItem('base44_access_token');
             localStorage.removeItem('base44_cached_user');
-            localStorage.removeItem(`rbac_profile_${firebaseUser.uid}`);
-            await auth.signOut();
+            localStorage.removeItem(`rbac_profile_${supabaseUser.id}`);
+            await supabase.auth.signOut();
             setIsLoadingPublicSettings(false);
             setIsLoadingAuth(false);
             setAuthChecked(true);
@@ -214,11 +202,11 @@ export const AuthProvider = ({ children }) => {
           localStorage.setItem(`rbac_profile_${firebaseUser.uid}`, JSON.stringify(rbacProfile));
 
           const currentUser = {
-            id: firebaseUser.uid,
-            email: firebaseUser.email,
-            name: userRecord.name || firebaseUser.displayName,
-            full_name: userRecord.name || firebaseUser.displayName || firebaseUser.email.split('@')[0],
-            displayName: userRecord.name || firebaseUser.displayName,
+            id: supabaseUser.id,
+            email: supabaseUser.email,
+            name: userRecord.name || supabaseUser.user_metadata?.full_name,
+            full_name: userRecord.name || supabaseUser.user_metadata?.full_name || supabaseUser.email.split('@')[0],
+            displayName: userRecord.name || supabaseUser.user_metadata?.full_name,
             role: matchingRole.role_name,
             role_id: userRecord.role_id,
             hierarchy_level: matchingRole.hierarchy_level,
@@ -227,9 +215,9 @@ export const AuthProvider = ({ children }) => {
             is_active: userRecord.is_active,
             branch_id: userRecord.branch_id,
             salary: userRecord.salary,
-            phone: userRecord.contact_mobile || userRecord.phone || userRecord.mobile || firebaseUser.phoneNumber || "",
+            phone: userRecord.contact_mobile || userRecord.phone || userRecord.mobile || "",
             contact_mobile: userRecord.contact_mobile || "",
-            contact_email: userRecord.contact_email || userRecord.email || firebaseUser.email || "",
+            contact_email: userRecord.contact_email || userRecord.email || supabaseUser.email || "",
             user_code: userRecord.user_code || localStorage.getItem('user_code') || "",
           };
 
@@ -237,12 +225,12 @@ export const AuthProvider = ({ children }) => {
           setUser(currentUser);
           setIsAuthenticated(true);
         } catch (err) {
-          console.error("RBAC Profile load failed:", err);
+          console.error("[v0] RBAC Profile load failed:", err);
           const currentUser = {
-            id: firebaseUser.uid,
-            email: firebaseUser.email,
-            full_name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
-            displayName: firebaseUser.displayName,
+            id: supabaseUser.id,
+            email: supabaseUser.email,
+            full_name: supabaseUser.user_metadata?.full_name || supabaseUser.email.split('@')[0],
+            displayName: supabaseUser.user_metadata?.full_name,
             role: 'cashier',
             hierarchy_level: 7,
             permissions: {
@@ -275,8 +263,7 @@ export const AuthProvider = ({ children }) => {
 
     return () => {
       clearTimeout(authBootTimeout);
-      cleanupTokenManager();
-      unsubscribe();
+      subscription?.unsubscribe();
     };
   }, []);
 
