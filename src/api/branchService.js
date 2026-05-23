@@ -1,51 +1,51 @@
 /**
- * Branch Management Service
+ * Branch Management Service - Supabase Edition
  * Handles all branch CRUD operations with per-user data isolation
  */
 
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  addDoc,
-  updateDoc,
-  query,
-  where,
-  serverTimestamp,
-} from 'firebase/firestore';
-import { auth } from './firebase';
+import { supabase } from './supabase';
 
-let db = null;
+let client = null;
 
-export function initializeBranchService(firebaseDb) {
-  db = firebaseDb;
+export function initializeBranchService(supabaseClient) {
+  client = supabaseClient;
 }
 
-function getUserId() {
-  return auth.currentUser?.uid || null;
+async function getUserId() {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    return user?.id || null;
+  } catch {
+    return null;
+  }
 }
 
 /**
  * Create a new branch (scoped to current user)
  */
 export async function createBranch(branchData) {
-  if (!db) throw new Error('Database not initialized');
-  const uid = getUserId();
+  if (!client) throw new Error('Supabase client not initialized');
+  const uid = await getUserId();
   if (!uid) throw new Error('User not authenticated');
 
   try {
     const branch = {
       ...branchData,
-      userId: uid,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      isActive: true,
+      user_id: uid,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      is_active: true,
     };
-    const docRef = await addDoc(collection(db, 'branches'), branch);
-    return docRef.id;
+    const { data, error } = await supabase
+      .from('branches')
+      .insert([branch])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data.id;
   } catch (error) {
-    console.error('Error creating branch:', error);
+    console.error('[v0] Error creating branch:', error);
     throw error;
   }
 }
@@ -54,13 +54,18 @@ export async function createBranch(branchData) {
  * Get branch by ID
  */
 export async function getBranch(branchId) {
-  if (!db) throw new Error('Database not initialized');
+  if (!client) throw new Error('Supabase client not initialized');
   try {
-    const docRef = doc(db, 'branches', branchId);
-    const snapshot = await getDoc(docRef);
-    return snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null;
+    const { data, error } = await supabase
+      .from('branches')
+      .select('*')
+      .eq('id', branchId)
+      .single();
+    
+    if (error && error.code !== 'PGRST116') throw error;
+    return data || null;
   } catch (error) {
-    console.error('Error fetching branch:', error);
+    console.error('[v0] Error fetching branch:', error);
     throw error;
   }
 }
@@ -70,8 +75,8 @@ export async function getBranch(branchId) {
  * Falls back to localStorage cache for instant load
  */
 export async function getAllBranches() {
-  if (!db) throw new Error('Database not initialized');
-  const uid = getUserId();
+  if (!client) throw new Error('Supabase client not initialized');
+  const uid = await getUserId();
   if (!uid) return [];
 
   const cacheKey = `branches_cache_${uid}`;
@@ -84,18 +89,19 @@ export async function getAllBranches() {
   } catch {}
 
   try {
-    const q = query(
-      collection(db, 'branches'),
-      where('userId', '==', uid),
-      where('isActive', '==', true)
-    );
-    const snapshot = await getDocs(q);
-    const branches = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    const { data, error } = await supabase
+      .from('branches')
+      .select('*')
+      .eq('user_id', uid)
+      .eq('is_active', true)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
     // Update cache
-    localStorage.setItem(cacheKey, JSON.stringify(branches));
-    return branches;
+    localStorage.setItem(cacheKey, JSON.stringify(data || []));
+    return data || [];
   } catch (error) {
-    console.error('Error fetching branches:', error);
+    console.error('[v0] Error fetching branches:', error);
     // Return cache as fallback
     return cached;
   }
@@ -104,8 +110,8 @@ export async function getAllBranches() {
 /**
  * Get cached branches synchronously (for instant sidebar render)
  */
-export function getCachedBranches() {
-  const uid = auth.currentUser?.uid;
+export async function getCachedBranches() {
+  const uid = await getUserId();
   if (!uid) return [];
   try {
     const raw = localStorage.getItem(`branches_cache_${uid}`);
@@ -119,15 +125,19 @@ export function getCachedBranches() {
  * Update branch details
  */
 export async function updateBranch(branchId, updates) {
-  if (!db) throw new Error('Database not initialized');
+  if (!client) throw new Error('Supabase client not initialized');
   try {
-    const docRef = doc(db, 'branches', branchId);
-    await updateDoc(docRef, { ...updates, updatedAt: serverTimestamp() });
+    const { error } = await supabase
+      .from('branches')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', branchId);
+    
+    if (error) throw error;
     // Bust cache
-    const uid = getUserId();
+    const uid = await getUserId();
     if (uid) localStorage.removeItem(`branches_cache_${uid}`);
   } catch (error) {
-    console.error('Error updating branch:', error);
+    console.error('[v0] Error updating branch:', error);
     throw error;
   }
 }
@@ -136,38 +146,51 @@ export async function updateBranch(branchId, updates) {
  * Deactivate a branch (soft delete)
  */
 export async function deactivateBranch(branchId) {
-  if (!db) throw new Error('Database not initialized');
+  if (!client) throw new Error('Supabase client not initialized');
   try {
-    const docRef = doc(db, 'branches', branchId);
-    await updateDoc(docRef, { isActive: false, updatedAt: serverTimestamp() });
+    const { error } = await supabase
+      .from('branches')
+      .update({ is_active: false, updated_at: new Date().toISOString() })
+      .eq('id', branchId);
+    
+    if (error) throw error;
     // Bust cache
-    const uid = getUserId();
+    const uid = await getUserId();
     if (uid) localStorage.removeItem(`branches_cache_${uid}`);
   } catch (error) {
-    console.error('Error deactivating branch:', error);
+    console.error('[v0] Error deactivating branch:', error);
     throw error;
   }
 }
 
 export async function getBranchSettings(branchId) {
-  if (!db) throw new Error('Database not initialized');
+  if (!client) throw new Error('Supabase client not initialized');
   try {
-    const docRef = doc(db, 'branches', branchId);
-    const snapshot = await getDoc(docRef);
-    return snapshot.exists() ? snapshot.data().settings : null;
+    const { data, error } = await supabase
+      .from('branches')
+      .select('settings')
+      .eq('id', branchId)
+      .single();
+    
+    if (error && error.code !== 'PGRST116') throw error;
+    return data?.settings || null;
   } catch (error) {
-    console.error('Error fetching branch settings:', error);
+    console.error('[v0] Error fetching branch settings:', error);
     throw error;
   }
 }
 
 export async function updateBranchSettings(branchId, settings) {
-  if (!db) throw new Error('Database not initialized');
+  if (!client) throw new Error('Supabase client not initialized');
   try {
-    const docRef = doc(db, 'branches', branchId);
-    await updateDoc(docRef, { settings, updatedAt: serverTimestamp() });
+    const { error } = await supabase
+      .from('branches')
+      .update({ settings, updated_at: new Date().toISOString() })
+      .eq('id', branchId);
+    
+    if (error) throw error;
   } catch (error) {
-    console.error('Error updating branch settings:', error);
+    console.error('[v0] Error updating branch settings:', error);
     throw error;
   }
 }

@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { accountingService, computeLedger, fmtINR } from './accountingService';
-import { base44 } from '@/api/base44Client';
+import { base44 } from '@/api/base44ClientSupabase';
 import { BookOpen, Calendar, Download, Search, Tag, TrendingUp, Hash, BarChart2 } from 'lucide-react';
 
 const SOURCE_BADGE = {

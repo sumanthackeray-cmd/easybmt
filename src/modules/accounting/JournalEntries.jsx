@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { accountingService, fmtINR } from './accountingService';
-import { base44 } from '@/api/base44Client';
+import { base44 } from '@/api/base44ClientSupabase';
 import {
   Plus, Search, Trash2, CheckCircle2, AlertTriangle,
   Calendar, FileText, Share2, Eye, Zap, BookOpen, TrendingUp, Activity

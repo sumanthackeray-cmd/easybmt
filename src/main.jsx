@@ -33,18 +33,8 @@ import App from '@/App.jsx'
 import '@/index.css'
 import { ThemeProvider } from "@/components/theme-provider"
 import { LanguageProvider } from "@/lib/LanguageContext"
-import { db } from '@/api/firebase'
-import { initializeBranchService } from '@/api/branchService'
-import { initializeInventorySyncService } from '@/api/inventorySyncService'
-import { initializeAuditLogging } from '@/api/auditLogging'
 
-try {
-  initializeBranchService(db);
-  initializeInventorySyncService(db);
-  initializeAuditLogging(db);
-} catch (e) {
-  console.error('[EasyBMT] Service init failed:', e);
-}
+console.log('[v0] Loading app...');
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   registerSW({ immediate: true });

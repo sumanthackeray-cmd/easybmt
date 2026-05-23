@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useLanguage } from '@/lib/LanguageContext';
-import { base44 } from '@/api/base44Client';
+import { base44 } from '@/api/base44ClientSupabase';
 import { toast } from 'sonner';
 import PermissionGuard from '@/components/PermissionGuard';
 import ResponsiveTabs from "@/components/ui/ResponsiveTabs";

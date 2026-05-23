@@ -62,8 +62,9 @@ export const AuthProvider = ({ children }) => {
       setAuthChecked(true);
     }, 10000);
 
-    // Listen for Supabase Auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    try {
+      // Listen for Supabase Auth state changes
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       const hasCachedUser = !!localStorage.getItem('base44_cached_user');
       if (!hasCachedUser) {
         setIsLoadingPublicSettings(true);
@@ -261,10 +262,21 @@ export const AuthProvider = ({ children }) => {
       clearTimeout(authBootTimeout);
     });
 
-    return () => {
+      return () => {
+        clearTimeout(authBootTimeout);
+        subscription?.unsubscribe();
+      };
+    } catch (error) {
+      console.error('[v0] Auth initialization error:', error);
+      setIsLoadingPublicSettings(false);
+      setIsLoadingAuth(false);
+      setAuthChecked(true);
       clearTimeout(authBootTimeout);
-      subscription?.unsubscribe();
-    };
+      
+      return () => {
+        clearTimeout(authBootTimeout);
+      };
+    }
   }, []);
 
   const logout = async (shouldRedirect = true) => {

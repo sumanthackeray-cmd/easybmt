@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { accountingService, computeBalanceSheet, fmtINR } from './accountingService';
-import { base44 } from '@/api/base44Client';
+import { base44 } from '@/api/base44ClientSupabase';
 import { Scale, CheckCircle2, Download, AlertTriangle, Info, Calendar } from 'lucide-react';
 
 export default function BalanceSheet() {

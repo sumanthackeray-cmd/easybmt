@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { accountingService, computeProfitLoss, fmtINR } from './accountingService';
-import { base44 } from '@/api/base44Client';
+import { base44 } from '@/api/base44ClientSupabase';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Area, AreaChart } from 'recharts';
 import { TrendingUp, TrendingDown, DollarSign, BarChart2, Receipt, CreditCard, Download, Calendar, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
 

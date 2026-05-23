@@ -1,28 +1,17 @@
 /**
- * Real-Time Inventory Synchronization Service
+ * Real-Time Inventory Synchronization Service - Supabase Edition
  * Handles instant stock updates across all branches
- * Uses Firestore listeners for real-time sync
+ * Uses Supabase real-time subscriptions for sync
  */
 
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  addDoc,
-  updateDoc,
-  query,
-  where,
-  onSnapshot,
-  serverTimestamp,
-} from 'firebase/firestore';
+import { supabase } from './supabase';
 
-let db = null;
+let client = null;
 const syncListeners = new Map();
 const inventoryCache = new Map();
 
-export function initializeInventorySyncService(firebaseDb) {
-  db = firebaseDb;
+export function initializeInventorySyncService(supabaseClient) {
+  client = supabaseClient;
 }
 
 /**
@@ -32,22 +21,20 @@ export function initializeInventorySyncService(firebaseDb) {
  * @returns {Promise<Object>} Inventory data
  */
 export async function getInventory(productId, branchId) {
-  if (!db) throw new Error('Database not initialized');
+  if (!client) throw new Error('Supabase client not initialized');
 
   try {
-    const q = query(
-      collection(db, 'inventory'),
-      where('productId', '==', productId),
-      where('branchId', '==', branchId)
-    );
+    const { data, error } = await supabase
+      .from('inventory')
+      .select('*')
+      .eq('product_id', productId)
+      .eq('branch_id', branchId)
+      .single();
 
-    const snapshot = await getDocs(q);
-    if (snapshot.docs.length > 0) {
-      return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
-    }
-    return null;
+    if (error && error.code !== 'PGRST116') throw error;
+    return data || null;
   } catch (error) {
-    console.error('Error fetching inventory:', error);
+    console.error('[v0] Error fetching inventory:', error);
     throw error;
   }
 }
@@ -58,17 +45,18 @@ export async function getInventory(productId, branchId) {
  * @returns {Promise<Array>} Array of inventory items
  */
 export async function getBranchInventory(branchId) {
-  if (!db) throw new Error('Database not initialized');
+  if (!client) throw new Error('Supabase client not initialized');
 
   try {
-    const q = query(collection(db, 'inventory'), where('branchId', '==', branchId));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    const { data, error } = await supabase
+      .from('inventory')
+      .select('*')
+      .eq('branch_id', branchId);
+
+    if (error) throw error;
+    return data || [];
   } catch (error) {
-    console.error('Error fetching branch inventory:', error);
+    console.error('[v0] Error fetching branch inventory:', error);
     throw error;
   }
 }
@@ -83,43 +71,52 @@ export async function getBranchInventory(branchId) {
  * @returns {Promise<Object>} Updated inventory
  */
 export async function updateInventory(productId, branchId, quantityDelta, reason) {
-  if (!db) throw new Error('Database not initialized');
+  if (!client) throw new Error('Supabase client not initialized');
 
   try {
     const inventory = await getInventory(productId, branchId);
+    
     if (!inventory) {
       // Auto-create/initialize the branch inventory if it doesn't exist
-      const colRef = collection(db, 'inventory');
-      const docData = {
-        productId,
-        branchId,
-        quantity: Math.max(0, quantityDelta),
-        reorderPoint: 10,
-        reorderQuantity: 50,
-        lastRestockDate: quantityDelta > 0 ? serverTimestamp() : null,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        lastUpdateReason: reason || 'stock_initialization',
-        lastUpdateQuantity: quantityDelta,
-      };
-      const docRef = await addDoc(colRef, docData);
-      return { id: docRef.id, ...docData };
+      const { data, error } = await supabase
+        .from('inventory')
+        .insert([{
+          product_id: productId,
+          branch_id: branchId,
+          quantity: Math.max(0, quantityDelta),
+          reorder_point: 10,
+          reorder_quantity: 50,
+          last_restock_date: quantityDelta > 0 ? new Date().toISOString() : null,
+          last_update_reason: reason || 'stock_initialization',
+          last_update_quantity: quantityDelta,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
     }
 
     const newQuantity = Math.max(0, inventory.quantity + quantityDelta);
-    const docRef = doc(db, 'inventory', inventory.id);
+    const { data, error } = await supabase
+      .from('inventory')
+      .update({
+        quantity: newQuantity,
+        last_restock_date: quantityDelta > 0 ? new Date().toISOString() : inventory.last_restock_date,
+        updated_at: new Date().toISOString(),
+        last_update_reason: reason,
+        last_update_quantity: quantityDelta,
+      })
+      .eq('id', inventory.id)
+      .select()
+      .single();
 
-    await updateDoc(docRef, {
-      quantity: newQuantity,
-      lastRestockDate: quantityDelta > 0 ? serverTimestamp() : inventory.lastRestockDate,
-      updatedAt: serverTimestamp(),
-      lastUpdateReason: reason,
-      lastUpdateQuantity: quantityDelta,
-    });
-
-    return { ...inventory, quantity: newQuantity };
+    if (error) throw error;
+    return data;
   } catch (error) {
-    console.error('Error updating inventory:', error);
+    console.error('[v0] Error updating inventory:', error);
     throw error;
   }
 }
@@ -131,36 +128,48 @@ export async function updateInventory(productId, branchId, quantityDelta, reason
  * @returns {Function} Unsubscribe function
  */
 export function subscribeToProductInventory(productId, callback) {
-  if (!db) {
-    console.error('Database not initialized');
+  if (!client) {
+    console.error('[v0] Supabase client not initialized');
     return () => {};
   }
 
   try {
-    const q = query(collection(db, 'inventory'), where('productId', '==', productId));
+    const subscription = supabase
+      .channel(`inventory_product_${productId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'inventory',
+          filter: `product_id=eq.${productId}`,
+        },
+        async () => {
+          // Fetch updated inventory
+          const { data, error } = await supabase
+            .from('inventory')
+            .select('*')
+            .eq('product_id', productId);
 
-    const unsubscribe = onSnapshot(q, snapshot => {
-      const inventory = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-
-      // Update cache
-      inventoryCache.set(productId, inventory);
-
-      // Call callback
-      callback(inventory);
-    });
+          if (!error && data) {
+            inventoryCache.set(productId, data);
+            callback(data);
+          }
+        }
+      )
+      .subscribe();
 
     // Store unsubscribe function
     if (!syncListeners.has(productId)) {
       syncListeners.set(productId, []);
     }
-    syncListeners.get(productId).push(unsubscribe);
+    syncListeners.get(productId).push(subscription);
 
-    return unsubscribe;
+    return () => {
+      subscription.unsubscribe();
+    };
   } catch (error) {
-    console.error('Error subscribing to product inventory:', error);
+    console.error('[v0] Error subscribing to product inventory:', error);
     return () => {};
   }
 }
@@ -172,37 +181,49 @@ export function subscribeToProductInventory(productId, callback) {
  * @returns {Function} Unsubscribe function
  */
 export function subscribeToBranchInventory(branchId, callback) {
-  if (!db) {
-    console.error('Database not initialized');
+  if (!client) {
+    console.error('[v0] Supabase client not initialized');
     return () => {};
   }
 
   try {
-    const q = query(collection(db, 'inventory'), where('branchId', '==', branchId));
+    const cacheKey = `branch_${branchId}`;
+    const subscription = supabase
+      .channel(`inventory_branch_${branchId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'inventory',
+          filter: `branch_id=eq.${branchId}`,
+        },
+        async () => {
+          // Fetch updated inventory
+          const { data, error } = await supabase
+            .from('inventory')
+            .select('*')
+            .eq('branch_id', branchId);
 
-    const unsubscribe = onSnapshot(q, snapshot => {
-      const inventory = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-
-      // Update cache
-      inventoryCache.set(`branch_${branchId}`, inventory);
-
-      // Call callback
-      callback(inventory);
-    });
+          if (!error && data) {
+            inventoryCache.set(cacheKey, data);
+            callback(data);
+          }
+        }
+      )
+      .subscribe();
 
     // Store unsubscribe function
-    const cacheKey = `branch_${branchId}`;
     if (!syncListeners.has(cacheKey)) {
       syncListeners.set(cacheKey, []);
     }
-    syncListeners.get(cacheKey).push(unsubscribe);
+    syncListeners.get(cacheKey).push(subscription);
 
-    return unsubscribe;
+    return () => {
+      subscription.unsubscribe();
+    };
   } catch (error) {
-    console.error('Error subscribing to branch inventory:', error);
+    console.error('[v0] Error subscribing to branch inventory:', error);
     return () => {};
   }
 }
@@ -213,22 +234,19 @@ export function subscribeToBranchInventory(branchId, callback) {
  * @returns {Promise<Array>} Array of low stock items
  */
 export async function getLowStockItems(branchId) {
-  if (!db) throw new Error('Database not initialized');
+  if (!client) throw new Error('Supabase client not initialized');
 
   try {
-    const q = query(
-      collection(db, 'inventory'),
-      where('branchId', '==', branchId),
-      where('quantity', '<=', 'reorderPoint') // Note: This specific query may need indexing
-    );
+    const { data, error } = await supabase
+      .from('inventory')
+      .select('*')
+      .eq('branch_id', branchId)
+      .lte('quantity', supabase.raw('reorder_point'));
 
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    if (error) throw error;
+    return data || [];
   } catch (error) {
-    console.error('Error fetching low stock items:', error);
+    console.error('[v0] Error fetching low stock items:', error);
     return [];
   }
 }
@@ -242,7 +260,7 @@ export async function getLowStockItems(branchId) {
  * @returns {Promise<Object>} Transfer result
  */
 export async function transferInventory(productId, fromBranchId, toBranchId, quantity) {
-  if (!db) throw new Error('Database not initialized');
+  if (!client) throw new Error('Supabase client not initialized');
 
   try {
     // Update source branch (reduce)
@@ -260,7 +278,7 @@ export async function transferInventory(productId, fromBranchId, toBranchId, qua
       timestamp: new Date().toISOString(),
     };
   } catch (error) {
-    console.error('Error transferring inventory:', error);
+    console.error('[v0] Error transferring inventory:', error);
     throw error;
   }
 }
@@ -273,7 +291,9 @@ export async function transferInventory(productId, fromBranchId, toBranchId, qua
 export function unsubscribeFromInventory(key) {
   if (syncListeners.has(key)) {
     const listeners = syncListeners.get(key);
-    listeners.forEach(unsubscribe => unsubscribe());
+    listeners.forEach(subscription => {
+      if (subscription?.unsubscribe) subscription.unsubscribe();
+    });
     syncListeners.delete(key);
   }
 }
@@ -284,7 +304,9 @@ export function unsubscribeFromInventory(key) {
  */
 export function unsubscribeFromAllInventory() {
   syncListeners.forEach(listeners => {
-    listeners.forEach(unsubscribe => unsubscribe());
+    listeners.forEach(subscription => {
+      if (subscription?.unsubscribe) subscription.unsubscribe();
+    });
   });
   syncListeners.clear();
   inventoryCache.clear();

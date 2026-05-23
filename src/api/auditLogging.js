@@ -1,35 +1,17 @@
 /**
- * Audit Logging Service
+ * Audit Logging Service - Supabase Edition
  * Tracks all user actions for compliance, security, and accountability
  */
 
-import {
-  collection,
-  addDoc,
-  query,
-  where,
-  getDocs,
-  orderBy,
-  limit,
-  Timestamp,
-} from 'firebase/firestore';
-import { db as firebaseDb } from './firebase';
+import { supabase } from './supabase';
 
-let db = firebaseDb;
+let client = supabase;
 
-export function initializeAuditLogging(firebaseDbInstance) {
-  if (firebaseDbInstance) {
-    db = firebaseDbInstance;
+export function initializeAuditLogging(supabaseInstance) {
+  if (supabaseInstance) {
+    client = supabaseInstance;
   }
 }
-
-const getAuditLogsCollection = () => {
-  const companyId = localStorage.getItem("company_id");
-  if (companyId) {
-    return collection(db, "companies", companyId, "auditLogs");
-  }
-  return collection(db, "auditLogs");
-};
 
 /**
  * Action types for audit logging
@@ -133,31 +115,38 @@ export const AUDIT_ACTIONS = {
  * @returns {Promise<string>} Document ID of created audit log
  */
 export async function logAuditAction(auditData) {
-  if (!db) {
-    console.warn('[EasyBMT] Audit logging not initialized — db is missing.');
+  if (!client) {
+    console.warn('[EasyBMT] Audit logging not initialized.');
     return null;
   }
 
   try {
+    const companyId = localStorage.getItem('company_id');
     const auditLog = {
       action: auditData.action,
-      userId: auditData.userId,
-      entityType: auditData.entityType,
-      entityId: auditData.entityId,
-      branchId: auditData.branchId,
+      user_id: auditData.userId,
+      entity_type: auditData.entityType,
+      entity_id: auditData.entityId,
+      branch_id: auditData.branchId,
+      company_id: companyId,
       changes: auditData.changes || {},
       description: auditData.description || '',
-      ipAddress: auditData.ipAddress || 'unknown',
-      userAgent: auditData.userAgent || '',
+      ip_address: auditData.ipAddress || 'unknown',
+      user_agent: auditData.userAgent || '',
       metadata: auditData.metadata || {},
-      timestamp: Timestamp.now(),
-      createdAt: new Date().toISOString(),
+      created_at: new Date().toISOString(),
     };
 
-    const docRef = await addDoc(getAuditLogsCollection(), auditLog);
-    return docRef.id;
+    const { data, error } = await supabase
+      .from('audit_logs')
+      .insert([auditLog])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data?.id;
   } catch (error) {
-    console.error('Error logging audit action:', error);
+    console.error('[v0] Error logging audit action:', error);
     throw error;
   }
 }
@@ -170,24 +159,21 @@ export async function logAuditAction(auditData) {
  * @returns {Promise<Array>} Array of audit logs
  */
 export async function getEntityAuditLogs(entityType, entityId, limitCount = 50) {
-  if (!db) return [];
+  if (!client) return [];
 
   try {
-    const q = query(
-      getAuditLogsCollection(),
-      where('entityType', '==', entityType),
-      where('entityId', '==', entityId),
-      orderBy('timestamp', 'desc'),
-      limit(limitCount)
-    );
+    const { data, error } = await supabase
+      .from('audit_logs')
+      .select('*')
+      .eq('entity_type', entityType)
+      .eq('entity_id', entityId)
+      .order('created_at', { ascending: false })
+      .limit(limitCount);
 
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    if (error) throw error;
+    return data || [];
   } catch (error) {
-    console.error('Error fetching audit logs:', error);
+    console.error('[v0] Error fetching audit logs:', error);
     return [];
   }
 }
@@ -200,34 +186,25 @@ export async function getEntityAuditLogs(entityType, entityId, limitCount = 50) 
  * @returns {Promise<Array>} Array of audit logs
  */
 export async function getUserAuditLogs(userId, branchId = null, limitCount = 100) {
-  if (!db) return [];
+  if (!client) return [];
 
   try {
-    let q;
+    let query = supabase
+      .from('audit_logs')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
     if (branchId) {
-      q = query(
-        getAuditLogsCollection(),
-        where('userId', '==', userId),
-        where('branchId', '==', branchId),
-        orderBy('timestamp', 'desc'),
-        limit(limitCount)
-      );
-    } else {
-      q = query(
-        getAuditLogsCollection(),
-        where('userId', '==', userId),
-        orderBy('timestamp', 'desc'),
-        limit(limitCount)
-      );
+      query = query.eq('branch_id', branchId);
     }
 
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    const { data, error } = await query.limit(limitCount);
+
+    if (error) throw error;
+    return data || [];
   } catch (error) {
-    console.error('Error fetching user audit logs:', error);
+    console.error('[v0] Error fetching user audit logs:', error);
     return [];
   }
 }
@@ -239,23 +216,20 @@ export async function getUserAuditLogs(userId, branchId = null, limitCount = 100
  * @returns {Promise<Array>} Array of audit logs
  */
 export async function getBranchAuditLogs(branchId, limitCount = 500) {
-  if (!db) return [];
+  if (!client) return [];
 
   try {
-    const q = query(
-      getAuditLogsCollection(),
-      where('branchId', '==', branchId),
-      orderBy('timestamp', 'desc'),
-      limit(limitCount)
-    );
+    const { data, error } = await supabase
+      .from('audit_logs')
+      .select('*')
+      .eq('branch_id', branchId)
+      .order('created_at', { ascending: false })
+      .limit(limitCount);
 
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    if (error) throw error;
+    return data || [];
   } catch (error) {
-    console.error('Error fetching branch audit logs:', error);
+    console.error('[v0] Error fetching branch audit logs:', error);
     return [];
   }
 }
