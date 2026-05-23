@@ -3,8 +3,7 @@ import { useTheme } from "next-themes";
 import { Link } from "react-router-dom";
 import { Mail, Lock, Building2, User, Loader2, ShieldAlert, ArrowRight, Eye, EyeOff, ShieldCheck, Moon, Sun } from "lucide-react";
 import { staffLogin, ownerLogin, prePopulateLoginCache } from "@/modules/auth/authService";
-import { setPersistence, browserLocalPersistence } from "firebase/auth";
-import { auth } from "@/firebase/config";
+import { supabase } from "@/api/supabase";
 import { base44 } from "@/api/base44Client";
 
 export default function Login() {
@@ -74,31 +73,20 @@ export default function Login() {
     setLoading(true);
     localStorage.clear();
     try {
-      await setPersistence(auth, browserLocalPersistence);
-      const user = await base44.auth.loginWithProvider("google", null);
-      const { query, collection, where, getDocs } = await import("firebase/firestore");
-      const { db } = await import("@/firebase/config");
-      let q = query(collection(db, "companies"), where("owner_uid", "==", user.uid));
-      let querySnapshot = await getDocs(q);
+      // Use Supabase Google OAuth
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/`,
+        },
+      });
       
-      if (querySnapshot.empty) {
-        q = query(collection(db, "companies"), where("admin_email", "==", user.email.toLowerCase()));
-        querySnapshot = await getDocs(q);
-      }
+      if (error) throw error;
+      if (!data) throw new Error("Google sign-in failed.");
       
-      if (!querySnapshot.empty) {
-        const companyDoc = querySnapshot.docs[0];
-        localStorage.setItem("company_id", companyDoc.id);
-        localStorage.setItem("user_code", "ADMIN-001");
-        await prePopulateLoginCache(user, companyDoc.id, "ADMIN-001");
-        window.location.href = "/";
-      } else {
-        await base44.auth.logout();
-        throw new Error("No company workspace found for this Google account. Please register first.");
-      }
+      // User will be redirected automatically after sign-in
     } catch (err) {
       setError(err.message || "Google sign-in failed.");
-    } finally {
       setLoading(false);
     }
   };
