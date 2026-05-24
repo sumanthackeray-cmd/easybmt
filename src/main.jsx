@@ -28,70 +28,17 @@ if (typeof window !== 'undefined') {
 
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { registerSW } from 'virtual:pwa-register'
 import App from '@/App.jsx'
 import '@/index.css'
-import { ThemeProvider } from "@/components/theme-provider"
-import { LanguageProvider } from "@/lib/LanguageContext"
 
 console.log('[v0] Loading app...');
-console.log('[v0] Root element:', document.getElementById('root'));
-
-if (import.meta.env.PROD && 'serviceWorker' in navigator) {
-  registerSW({ immediate: true });
-}
-if (import.meta.env.DEV && 'serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then((regs) => {
-    regs.forEach((r) => r.unregister());
-  });
-}
-
-class RootErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error };
-  }
-  componentDidCatch(error, errorInfo) {
-    console.error('[EasyBMT Root Error]', error, errorInfo);
-  }
-  render() {
-    if (this.state.hasError) {
-      const err = this.state.error;
-      return (
-        <div style={{ padding: '24px', background: '#1a1a2e', color: '#ff4444', fontFamily: 'system-ui,sans-serif', minHeight: '100vh' }}>
-          <h2 style={{ color: '#ff8800', marginTop: 0 }}>Something went wrong</h2>
-          <p style={{ color: '#ccc' }}>{err?.message || 'An unexpected error occurred.'}</p>
-          <button
-            type="button"
-            onClick={() => window.location.reload()}
-            style={{ marginTop: '16px', padding: '10px 20px', background: '#ff8800', color: '#000', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
-          >
-            Reload app
-          </button>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
 
 const rootElement = document.getElementById('root');
 console.log('[v0] Root element found:', rootElement);
 
 if (rootElement) {
   try {
-    ReactDOM.createRoot(rootElement).render(
-      <RootErrorBoundary>
-        <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme" attribute="class">
-          <LanguageProvider>
-            <App />
-          </LanguageProvider>
-        </ThemeProvider>
-      </RootErrorBoundary>
-    );
+    ReactDOM.createRoot(rootElement).render(<App />);
     console.log('[v0] App rendered successfully');
   } catch (err) {
     console.error('[v0] Render error:', err);
