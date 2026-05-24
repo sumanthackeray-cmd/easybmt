@@ -20,8 +20,8 @@ import {
 import { toast } from "@/components/ui/use-toast";
 import { useTenant } from "@/hooks/useTenant";
 import { ownerLogin } from "@/modules/auth/authService";
-import { getFunctions, httpsCallable } from "firebase/functions";
-import app from "@/api/firebase";
+import { supabase } from "@/api/supabase";
+import { sendOTP, verifyOTP, resendOTP } from "@/api/otpService";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -79,6 +79,7 @@ export default function Register() {
     setError("");
     localStorage.clear();
 
+    if (!email.trim()) return setError("Email is required.");
     if (!companyName.trim()) return setError("Company Name is required.");
     if (gstin && !validateGstin(gstin)) return setError("Invalid GSTIN format. Example: 27AAPCM1234F1Z5");
     if (password !== confirmPassword) return setError("Passwords do not match.");
@@ -86,16 +87,14 @@ export default function Register() {
 
     setIsProcessing(true);
     try {
-      const sendOtpFn = httpsCallable(getFunctions(app), 'sendRegistrationOtp');
-      const res = await sendOtpFn({ email: email.trim().toLowerCase() });
-      setOtpSent(true);
+      const result = await sendOTP(email.trim().toLowerCase(), 'signup');
       
-      if (res.data?.developmentOtp) {
-        setOtp(res.data.developmentOtp);
+      if (result.success) {
+        setOtpSent(true);
         toast({
-          title: "Development Mode Active",
-          description: "SMTP is not configured. We auto-filled the OTP for you to test registration.",
-          duration: 8000,
+          title: "OTP Sent Successfully",
+          description: result.message,
+          duration: 5000,
         });
       } else {
         toast({
@@ -120,30 +119,47 @@ export default function Register() {
 
     setIsVerifyingOtp(true);
     try {
-      const verifyOtpFn = httpsCallable(getFunctions(app), 'verifyRegistrationOtp');
-      await verifyOtpFn({ email: email.trim().toLowerCase(), otp: otp.trim() });
+      // Verify OTP with Supabase
+      const verifyResult = await verifyOTP(email.trim().toLowerCase(), otp.trim(), 'signup');
       
-      // If OTP verified, proceed with registration
-      const response = await registerNewCompany({
-        companyName: companyName.trim(),
-        gstin: gstin.trim().toUpperCase(),
+      if (!verifyResult.success) {
+        return setError(verifyResult.error || "Invalid OTP");
+      }
+      
+      // Register with Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
-        password: password
+        password: password,
+        options: {
+          data: {
+            companyName: companyName.trim(),
+            gstin: gstin.trim().toUpperCase(),
+          }
+        }
       });
 
-      if (response && response.success) {
+      if (authError) throw authError;
+
+      // If registration successful
+      if (authData?.user) {
         toast({
           title: "Registration Successful",
-          description: "Logging you in and redirecting to setup...",
+          description: "Your account has been created. Logging you in...",
         });
-        await ownerLogin(email.trim().toLowerCase(), password);
-        // Redirect directly to settings for setup, avoiding popup or home
-        navigate("/settings?tab=company_profile", { replace: true });
-      } else {
-        setError("Failed to register company. Please try again.");
+
+        // Auto-login after registration
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: email.trim().toLowerCase(),
+          password: password
+        });
+
+        if (signInError) throw signInError;
+
+        // Redirect to dashboard
+        navigate("/", { replace: true });
       }
     } catch (err) {
-      setError(getFriendlyErrorMessage(err) || "Invalid or expired OTP.");
+      setError(getFriendlyErrorMessage(err) || "Registration failed. Please try again.");
     } finally {
       setIsVerifyingOtp(false);
     }
