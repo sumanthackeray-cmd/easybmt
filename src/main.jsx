@@ -35,6 +35,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { LanguageProvider } from "@/lib/LanguageContext"
 
 console.log('[v0] Loading app...');
+console.log('[v0] Root element:', document.getElementById('root'));
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   registerSW({ immediate: true });
@@ -77,12 +78,25 @@ class RootErrorBoundary extends React.Component {
   }
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <RootErrorBoundary>
-    <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme" attribute="class">
-      <LanguageProvider>
-        <App />
-      </LanguageProvider>
-    </ThemeProvider>
-  </RootErrorBoundary>
-)
+const rootElement = document.getElementById('root');
+console.log('[v0] Root element found:', rootElement);
+
+if (rootElement) {
+  try {
+    ReactDOM.createRoot(rootElement).render(
+      <RootErrorBoundary>
+        <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme" attribute="class">
+          <LanguageProvider>
+            <App />
+          </LanguageProvider>
+        </ThemeProvider>
+      </RootErrorBoundary>
+    );
+    console.log('[v0] App rendered successfully');
+  } catch (err) {
+    console.error('[v0] Render error:', err);
+    rootElement.innerHTML = '<div style="padding: 20px; color: red;"><h2>App Failed to Load</h2><p>' + err.message + '</p></div>';
+  }
+} else {
+  console.error('[v0] Root element not found!');
+}

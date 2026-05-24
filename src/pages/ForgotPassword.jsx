@@ -1,12 +1,7 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/api/supabase";
 import { sendOTP, verifyOTP } from "@/api/otpService";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Mail, ArrowLeft, Loader2, AlertCircle, Lock } from "lucide-react";
-import AuthLayout from "@/components/AuthLayout";
 
 export default function ForgotPassword() {
   const [step, setStep] = useState('email'); // 'email', 'otp', 'password'
@@ -84,175 +79,223 @@ export default function ForgotPassword() {
   };
 
   return (
-    <AuthLayout
-      icon={Mail}
-      title={step === 'email' ? "Reset password" : step === 'otp' ? "Verify OTP" : "Set new password"}
-      subtitle={step === 'email' ? "Enter your email to receive an OTP" : step === 'otp' ? "Enter the OTP sent to your email" : "Create your new password"}
-      footer={
-        <Link to="/login" className="text-primary font-medium hover:underline">
-          <ArrowLeft className="w-3 h-3 inline mr-1" />Back to log in
-        </Link>
-      }
-    >
-      {step === 'email' && (
-        <form onSubmit={handleSendOtp} className="space-y-4">
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex gap-3">
-              <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-red-800">{error}</p>
-            </div>
-          )}
-          
-          <div className="space-y-2">
-            <Label htmlFor="email">Email address</Label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
-              <Input
-                id="email"
+    <div style={{
+      minHeight: "100vh",
+      background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontFamily: "system-ui, sans-serif",
+      padding: "20px",
+    }}>
+      <div style={{
+        background: "white",
+        borderRadius: "12px",
+        boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+        width: "100%",
+        maxWidth: "480px",
+        padding: "40px",
+      }}>
+        <h1 style={{ textAlign: "center", color: "#333", marginTop: 0, marginBottom: "10px" }}>
+          {step === 'email' ? "Reset Password" : step === 'otp' ? "Verify OTP" : "Set New Password"}
+        </h1>
+        <p style={{ textAlign: "center", color: "#666", marginBottom: "30px", fontSize: "14px" }}>
+          {step === 'email' ? "Enter your email to receive a reset code" : step === 'otp' ? "Check your email for the verification code" : "Create your new password"}
+        </p>
+
+        {error && (
+          <div style={{
+            background: "#fee",
+            border: "1px solid #fcc",
+            color: "#c00",
+            padding: "12px",
+            borderRadius: "6px",
+            marginBottom: "20px",
+            fontSize: "14px",
+          }}>
+            {error}
+          </div>
+        )}
+
+        {step === 'email' && (
+          <form onSubmit={handleSendOtp}>
+            <div style={{ marginBottom: "30px" }}>
+              <label style={{ display: "block", color: "#333", fontWeight: "600", marginBottom: "8px" }}>
+                Email Address
+              </label>
+              <input
                 type="email"
-                autoComplete="email"
-                autoFocus
-                placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="pl-10 h-12"
-                required
+                placeholder="admin@company.com"
                 disabled={loading}
+                style={{
+                  width: "100%",
+                  padding: "12px",
+                  border: "1px solid #ddd",
+                  borderRadius: "6px",
+                  fontSize: "14px",
+                  boxSizing: "border-box",
+                }}
               />
             </div>
-          </div>
-          
-          <Button 
-            type="submit" 
-            className="w-full h-12 font-medium" 
-            disabled={loading || !email}
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Sending OTP...
-              </>
-            ) : (
-              "Send OTP"
-            )}
-          </Button>
 
-          <p className="text-xs text-muted-foreground text-center mt-4">
-            We'll send an OTP to verify your email address.
-          </p>
-        </form>
-      )}
+            <button
+              type="submit"
+              disabled={loading || !email}
+              style={{
+                width: "100%",
+                padding: "14px",
+                background: loading || !email ? "#ccc" : "#667eea",
+                color: "white",
+                border: "none",
+                borderRadius: "6px",
+                fontWeight: "600",
+                fontSize: "16px",
+                cursor: loading || !email ? "not-allowed" : "pointer",
+              }}
+            >
+              {loading ? "Sending OTP..." : "Send Reset Code"}
+            </button>
+          </form>
+        )}
 
-      {step === 'otp' && (
-        <form onSubmit={handleVerifyOtp} className="space-y-4">
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex gap-3">
-              <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-red-800">{error}</p>
+        {step === 'otp' && (
+          <form onSubmit={handleVerifyOtp}>
+            <div style={{ marginBottom: "30px" }}>
+              <label style={{ display: "block", color: "#333", fontWeight: "600", marginBottom: "8px" }}>
+                Enter 6-digit Code
+              </label>
+              <input
+                type="text"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                placeholder="000000"
+                maxLength="6"
+                disabled={loading}
+                style={{
+                  width: "100%",
+                  padding: "14px",
+                  textAlign: "center",
+                  fontSize: "24px",
+                  letterSpacing: "8px",
+                  border: "1px solid #ddd",
+                  borderRadius: "6px",
+                  boxSizing: "border-box",
+                }}
+              />
             </div>
-          )}
-          
-          <div className="space-y-2">
-            <Label htmlFor="otp">OTP Code</Label>
-            <Input
-              id="otp"
-              type="text"
-              maxLength="6"
-              placeholder="000000"
-              value={otp}
-              onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-              className="h-12 text-center text-lg tracking-widest"
-              required
-              disabled={loading}
-              autoFocus
-            />
-          </div>
-          
-          <Button 
-            type="submit" 
-            className="w-full h-12 font-medium" 
-            disabled={loading || otp.length !== 6}
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Verifying...
-              </>
-            ) : (
-              "Verify OTP"
-            )}
-          </Button>
 
-          <Button 
-            type="button"
-            variant="outline"
-            className="w-full"
-            onClick={() => {setStep('email'); setOtp("");}}
-          >
-            Change Email
-          </Button>
-        </form>
-      )}
+            <button
+              type="submit"
+              disabled={loading || otp.length !== 6}
+              style={{
+                width: "100%",
+                padding: "14px",
+                background: loading || otp.length !== 6 ? "#ccc" : "#667eea",
+                color: "white",
+                border: "none",
+                borderRadius: "6px",
+                fontWeight: "600",
+                fontSize: "16px",
+                cursor: loading || otp.length !== 6 ? "not-allowed" : "pointer",
+              }}
+            >
+              {loading ? "Verifying..." : "Verify Code"}
+            </button>
 
-      {step === 'password' && (
-        <form onSubmit={handleResetPassword} className="space-y-4">
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex gap-3">
-              <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-red-800">{error}</p>
-            </div>
-          )}
-          
-          <div className="space-y-2">
-            <Label htmlFor="newPassword">New Password</Label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
-              <Input
-                id="newPassword"
+            <button
+              type="button"
+              onClick={() => setStep("email")}
+              style={{
+                width: "100%",
+                padding: "12px",
+                background: "transparent",
+                color: "#667eea",
+                border: "1px solid #667eea",
+                borderRadius: "6px",
+                fontWeight: "600",
+                cursor: "pointer",
+                marginTop: "12px",
+              }}
+            >
+              Change Email
+            </button>
+          </form>
+        )}
+
+        {step === 'password' && (
+          <form onSubmit={handleResetPassword}>
+            <div style={{ marginBottom: "20px" }}>
+              <label style={{ display: "block", color: "#333", fontWeight: "600", marginBottom: "8px" }}>
+                New Password
+              </label>
+              <input
                 type="password"
-                placeholder="Enter new password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="pl-10 h-12"
-                required
+                placeholder="••••••••"
                 disabled={loading}
+                style={{
+                  width: "100%",
+                  padding: "12px",
+                  border: "1px solid #ddd",
+                  borderRadius: "6px",
+                  fontSize: "14px",
+                  boxSizing: "border-box",
+                }}
               />
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm Password</Label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
-              <Input
-                id="confirmPassword"
+            <div style={{ marginBottom: "30px" }}>
+              <label style={{ display: "block", color: "#333", fontWeight: "600", marginBottom: "8px" }}>
+                Confirm Password
+              </label>
+              <input
                 type="password"
-                placeholder="Confirm password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="pl-10 h-12"
-                required
+                placeholder="••••••••"
                 disabled={loading}
+                style={{
+                  width: "100%",
+                  padding: "12px",
+                  border: "1px solid #ddd",
+                  borderRadius: "6px",
+                  fontSize: "14px",
+                  boxSizing: "border-box",
+                }}
               />
             </div>
-          </div>
-          
-          <Button 
-            type="submit" 
-            className="w-full h-12 font-medium" 
-            disabled={loading || !newPassword || newPassword !== confirmPassword}
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Resetting...
-              </>
-            ) : (
-              "Reset Password"
-            )}
-          </Button>
-        </form>
-      )}
-    </AuthLayout>
+
+            <button
+              type="submit"
+              disabled={loading || !newPassword || newPassword !== confirmPassword}
+              style={{
+                width: "100%",
+                padding: "14px",
+                background: loading || !newPassword || newPassword !== confirmPassword ? "#ccc" : "#667eea",
+                color: "white",
+                border: "none",
+                borderRadius: "6px",
+                fontWeight: "600",
+                fontSize: "16px",
+                cursor: loading || !newPassword || newPassword !== confirmPassword ? "not-allowed" : "pointer",
+              }}
+            >
+              {loading ? "Resetting..." : "Reset Password"}
+            </button>
+          </form>
+        )}
+
+        <div style={{ marginTop: "24px", textAlign: "center", borderTop: "1px solid #eee", paddingTop: "20px" }}>
+          <p style={{ color: "#666", fontSize: "14px", margin: 0 }}>
+            <Link to="/login" style={{ color: "#667eea", textDecoration: "none", fontWeight: "600" }}>
+              Back to Login
+            </Link>
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }
