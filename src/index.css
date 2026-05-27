@@ -1,0 +1,844 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import './ai-styles.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-sans: 'Plus Jakarta Sans', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+
+    /* Light Mode Variables */
+    --background: 220 20% 97%;
+    --foreground: 222 47% 8%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 8%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 8%;
+    --primary: 36 90% 55%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 220 15% 94%;
+    --secondary-foreground: 222 30% 20%;
+    --muted: 220 15% 92%;
+    --muted-foreground: 220 10% 40%;
+    --accent: 220 15% 90%;
+    --accent-foreground: 222 47% 8%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 220 15% 85%;
+    --input: 220 15% 92%;
+    --ring: 36 90% 55%;
+    
+    --chart-1: 36 90% 55%;
+    --chart-2: 160 72% 39%;
+    --chart-3: 217 91% 60%;
+    --chart-4: 263 70% 65%;
+    --chart-5: 174 72% 41%;
+    --radius: 0.75rem;
+
+    --gold: 36 90% 55%;
+    --gold-glow: 36 90% 55%;
+    --success: 160 72% 39%;
+    --info: 217 91% 60%;
+    --warning: 38 92% 50%;
+    --purple: 263 70% 65%;
+    --teal: 174 72% 41%;
+
+    --sidebar-background: 220 20% 98%;
+    --sidebar-foreground: 222 30% 25%;
+    --sidebar-primary: 36 90% 55%;
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 220 15% 93%;
+    --sidebar-accent-foreground: 222 47% 8%;
+    --sidebar-border: 220 15% 88%;
+    --sidebar-ring: 36 90% 55%;
+
+    /* Safe area for mobile notches */
+    --safe-top: max(env(safe-area-inset-top), 24px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+    /* Mobile header offset - must match MobileNav top bar height */
+    --mobile-header-h: calc(56px + var(--safe-top));
+    /* Bottom nav height */
+    --mobile-bottom-nav-h: 56px;
+  }
+
+  .dark {
+    /* Dark Mode Variables */
+    --background: 222 47% 4%;
+    --foreground: 220 30% 93%;
+    --card: 222 40% 7%;
+    --card-foreground: 220 30% 93%;
+    --popover: 222 40% 7%;
+    --popover-foreground: 220 30% 93%;
+    --primary: 36 90% 55%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 222 30% 12%;
+    --secondary-foreground: 220 20% 70%;
+    --muted: 222 25% 14%;
+    --muted-foreground: 220 15% 55%;
+    --accent: 222 30% 16%;
+    --accent-foreground: 220 30% 93%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 222 25% 18%;
+    --input: 222 25% 14%;
+    --ring: 36 90% 55%;
+    
+    --chart-1: 36 90% 55%;
+    --chart-2: 160 72% 39%;
+    --chart-3: 217 91% 60%;
+    --chart-4: 263 70% 65%;
+    --chart-5: 174 72% 41%;
+
+    --sidebar-background: 222 40% 5%;
+    --sidebar-foreground: 220 20% 70%;
+    --sidebar-primary: 36 90% 55%;
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 222 30% 12%;
+    --sidebar-accent-foreground: 220 30% 93%;
+    --sidebar-border: 222 25% 15%;
+    --sidebar-ring: 36 90% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    box-sizing: border-box;
+  }
+
+  html, body, #root {
+    height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    width: 100%;
+    max-width: 100vw;
+    /* Smooth programmatic scrolling (anchor links, scrollIntoView, etc.) */
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    /* Prevent zoom on iOS inputs */
+    -webkit-text-size-adjust: 100%;
+    padding-bottom: env(safe-area-inset-bottom);
+    /* Remove 300ms tap delay on all mobile browsers */
+    touch-action: manipulation;
+    /* Prevent accidental pull-to-refresh / back-swipe on Android Chrome */
+    overscroll-behavior: contain;
+    /* GPU-accelerate the entire render tree for smoother compositing */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  img, svg, video, canvas {
+    max-width: 100%;
+    height: auto;
+  }
+
+  button, input, select, textarea {
+    max-width: 100%;
+  }
+
+  h1 { font-size: clamp(20px, 4vw, 36px); }
+  h2 { font-size: clamp(18px, 3.5vw, 28px); }
+  h3 { font-size: clamp(16px, 3vw, 24px); }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* ====================================================
+     INSTANT MOMENTUM SCROLLING (Mobile & Android WebView)
+     Applied to every scrollable container automatically
+     ==================================================== */
+  .smooth-scroll,
+  [data-scroll],
+  .overflow-y-auto,
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch; /* iOS momentum scrolling */
+    scroll-behavior: smooth;
+  }
+
+  .font-mono {
+    font-family: var(--font-mono);
+  }
+
+  .gold-gradient {
+    background: linear-gradient(135deg, hsl(36, 90%, 55%), hsl(20, 90%, 50%));
+  }
+
+  .gold-text {
+    background: linear-gradient(135deg, hsl(36, 90%, 55%), hsl(20, 90%, 50%));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .gold-glow {
+    box-shadow: 0 0 24px hsla(36, 90%, 55%, 0.2);
+  }
+
+  .animate-fade-up {
+    animation: fadeUp 0.3s ease-out;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /*  Toast Notification Animations  */
+  .animate-toast-in {
+    animation: toastSlideIn 0.3s cubic-bezier(0.21, 1.02, 0.73, 1) forwards;
+  }
+
+  @keyframes toastSlideIn {
+    0%  { opacity: 0; transform: translateX(calc(100% + 1rem)); }
+    100% { opacity: 1; transform: translateX(0); }
+  }
+
+  @keyframes toastFadeOut {
+    0%  { opacity: 1; transform: translateX(0); max-height: 100px; }
+    60% { opacity: 0; transform: translateX(calc(100% + 1rem)); max-height: 100px; }
+    100% { opacity: 0; transform: translateX(calc(100% + 1rem)); max-height: 0; margin: 0; }
+  }
+
+  .animate-progress-indeterminate {
+    animation: progressIndeterminate 1.5s infinite linear;
+    transform-origin: 0% 50%;
+  }
+
+  @keyframes progressIndeterminate {
+    0% { transform: translateX(0) scaleX(0); }
+    40% { transform: translateX(0) scaleX(0.4); }
+    100% { transform: translateX(100%) scaleX(0.5); }
+  }
+
+
+  .animate-ticker {
+    animation: ticker 15s linear infinite;
+  }
+
+  @keyframes ticker {
+    0% { transform: translateX(100%); }
+    100% { transform: translateX(-100%); }
+  }
+
+  /* Safe area bottom padding for mobile nav */
+  .pb-safe {
+    padding-bottom: calc(1.5rem + var(--safe-bottom));
+  }
+
+  /*  Mobile Responsive Utility Classes  */
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+  }
+
+  .table-wrapper {
+    overflow-x: auto;
+    width: 100%;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+  }
+
+  .ai-message {
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+  
+  .tap-target {
+    min-height: 44px;
+    padding: 10px 16px;
+    white-space: nowrap;
+  }
+}
+
+/* ====================================================
+   GLOBAL MOBILE CONTENT OFFSET SYSTEM
+   Ensures NO page content is ever hidden behind the
+   fixed mobile top navbar. Applied via AppLayout.
+   ==================================================== */
+
+/* The main scroll container already handles top padding
+   via pt-[calc(64px+env(safe-area-inset-top,0px))] in AppLayout.
+   These rules provide extra safety for edge cases. */
+
+@media (max-width: 1023px) {
+  /* Page header rows: always flex-wrap so title + button never overlap */
+  .page-header-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  /* Guarantee the first child of any page wrapper starts below the header */
+  #main-scroll-container > div > *:first-child {
+    /* Extra breathing room for the very first element on each page */
+    scroll-margin-top: var(--mobile-header-h);
+  }
+
+  /* Ensure heading rows with action buttons wrap on small screens */
+  .flex.items-center.justify-between:has(h1),
+  .flex.flex-col.sm\:flex-row {
+    flex-wrap: wrap;
+  }
+
+  /* Text size safety for very small screens */
+  h1.text-3xl, h1.text-2xl {
+    font-size: clamp(18px, 5vw, 28px) !important;
+    line-height: 1.2;
+  }
+}
+
+/* ====================================================
+   STOCK TRANSFER, INVENTORY SYNC & ALL PLAIN-FLEX PAGES
+   Catch-all for pages that use non-wrapping header rows
+   ==================================================== */
+
+/* Override: any DIRECT flex child of a page space-y root
+   that contains both a text element AND a button must wrap */
+@media (max-width: 640px) {
+  /* Force page top headers to always wrap on mobile */
+  .space-y-6 > div:first-child:has(h1, h2),
+  .space-y-5 > div:first-child:has(h1, h2),
+  .space-y-4 > div:first-child:has(h1, h2) {
+    flex-wrap: wrap !important;
+  }
+
+  /* Make action buttons in wrapped header rows full width on xs */
+  .space-y-6 > div:first-child:has(h1, h2) > button,
+  .space-y-5 > div:first-child:has(h1, h2) > button,
+  .space-y-4 > div:first-child:has(h1, h2) > button {
+    width: 100%;
+  }
+
+  /* Prevent any single line heading from overflowing */
+  h1, h2 {
+    overflow-wrap: break-word;
+    word-break: break-word;
+    max-width: 100%;
+  }
+
+  /* Prevent text overflow in stats/card headers */
+  .card-header-actions,
+  [class*="CardHeader"] {
+    flex-wrap: wrap;
+  }
+}
+
+/* Wider breakpoint: items that just need to wrap, not full-width */
+@media (max-width: 768px) {
+  /* Ensures sm:flex-row elements always wrap when they contain headings + buttons */
+  .flex.flex-col.sm\\:flex-row.sm\\:items-center {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  /* Tabs/pills scroll horizontally instead of overflowing */
+  [role="tablist"] {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-wrap: nowrap;
+  }
+  [role="tablist"]::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+
+/* ====================================================
+   MOBILE MAIN CONTENT AREA PADDING
+   Used by AppLayout.jsx for the main scroll container.
+   Replaces brittle Tailwind calc+env() for cross-browser
+   compatibility on all Android/iOS mobile browsers.
+   ==================================================== */
+
+/* Mobile: top padding = header height + safe area inset + breathing room */
+.mobile-main-padding {
+  padding-top: 64px; /* base fallback for all browsers */
+  padding-top: calc(var(--mobile-header-h) + 16px);
+  padding-bottom: 60px; /* base fallback */
+  padding-bottom: calc(var(--mobile-bottom-nav-h) + env(safe-area-inset-bottom, 0px));
+  padding-left: max(12px, env(safe-area-inset-left, 12px));
+  padding-right: max(12px, env(safe-area-inset-right, 12px));
+}
+
+/* Desktop: remove mobile-specific padding, handled by lg:p-6 */
+@media (min-width: 1024px) {
+  .mobile-main-padding {
+    padding-top: 0;
+    padding-bottom: 0;
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
+/* ====================================================
+   GPU-ACCELERATED INSTANT SCROLL ENGINE
+   Main scroll container optimizations for 60fps
+   on Android Chrome, Samsung Internet, iOS Safari
+   ==================================================== */
+
+#main-scroll-container {
+  /* Momentum scrolling on iOS (inertial "flick" scroll) */
+  -webkit-overflow-scrolling: touch;
+  /* Hint to compositor: pre-allocate GPU layer for scroll */
+  will-change: scroll-position;
+  /* Force GPU layer promotion for buttery compositing */
+  transform: translateZ(0);
+  /* Isolate paint to this container — child repaints don't bubble */
+  contain: layout style;
+}
+
+/* Scrollable inner panels (modals, sidebars, sheets, tables) */
+[role="dialog"] .overflow-y-auto,
+[role="dialog"] .overflow-auto,
+.max-h-80,
+.max-h-96 {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* ====================================================
+   MOBILE PERFORMANCE & TOUCH OPTIMIZATIONS
+   ==================================================== */
+
+@media (max-width: 1023px) {
+  /* GPU-promote every scrollable area on mobile for instant response */
+  .overflow-y-auto,
+  .overflow-x-auto,
+  .overflow-auto {
+    -webkit-overflow-scrolling: touch;
+    will-change: scroll-position;
+    transform: translateZ(0);
+  }
+
+  /* Cards & list items: contain paint to avoid full-page repaints on scroll */
+  .bg-card,
+  [class*="rounded-xl"],
+  [class*="rounded-2xl"] {
+    contain: content;
+  }
+
+  /* Eliminate tap highlight flash on Android/iOS */
+  button, a, [role="button"], [tabindex] {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Ensure touch targets have instant visual feedback */
+  button:active, a:active, [role="button"]:active {
+    transition-duration: 0.05s !important;
+  }
+}
+
+/* Respect user preference for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+
+/* Custom scrollbar */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsla(220, 10%, 60%, 0.3);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsla(220, 10%, 60%, 0.55);
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: hsla(220, 20%, 40%, 0.3);
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: hsla(220, 20%, 40%, 0.55);
+}
+
+/* Premium glassmorphism and modern UI utility classes */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(220, 220, 220, 0.5);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.03);
+}
+
+.dark .glass-panel {
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.25);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(220, 220, 220, 0.4);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dark .glass-card {
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.08);
+  border-color: hsla(36, 90%, 55%, 0.25);
+}
+
+.dark .glass-card:hover {
+  box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.4);
+  border-color: hsla(36, 90%, 55%, 0.35);
+}
+
+.neon-glow-primary {
+  box-shadow: 0 0 20px hsla(36, 90%, 55%, 0.15);
+}
+
+.neon-glow-secondary {
+  box-shadow: 0 0 20px hsla(263, 70%, 65%, 0.15);
+}
+
+.premium-btn {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.premium-btn::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transform: translateX(-100%);
+}
+
+.premium-btn:hover::after {
+  transform: translateX(100%);
+  transition: transform 0.6s ease;
+}
+
+.premium-btn:active {
+  transform: scale(0.98);
+}
+
+
+/* ====================================================
+   MOBILE-FIRST DIALOG / SHEET FIXES
+   All dialogs must not overflow viewport on mobile
+   ==================================================== */
+[role="dialog"] {
+  max-height: 100dvh !important;
+  display: flex !important;
+  flex-direction: column;
+}
+
+/* For flex-column dialogs, let inner direct children size correctly */
+[role="dialog"] > * {
+  min-height: 0;
+}
+
+/* Radix Select dropdown - ensure visible on mobile */
+[data-radix-popper-content-wrapper] {
+  z-index: 9999 !important;
+}
+
+/* Ensure select content doesn't overflow on mobile */
+[role="listbox"],
+[data-radix-scroll-area-viewport] {
+  max-height: 40vh !important;
+  overflow-y: auto !important;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+[role="listbox"]::-webkit-scrollbar,
+[data-radix-scroll-area-viewport]::-webkit-scrollbar {
+  display: none;
+}
+
+/* ====================================================
+   MOBILE INPUT ZOOM PREVENTION
+   ==================================================== */
+@media (max-width: 768px) {
+  input, select, textarea {
+    font-size: 16px !important;
+    /* Prevents iOS from zooming on focus */
+  }
+}
+
+/* ====================================================
+   TABLE OVERFLOW ON MOBILE
+   ==================================================== */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+@media (max-width: 640px) {
+  /* Cards should not overflow */
+  .card, [class*="rounded"] {
+    max-width: 100%;
+    overflow: hidden;
+  }
+}
+
+/* ====================================================
+   PRINT STYLES
+   ==================================================== */
+@media print {
+  #root,
+  .print\:hidden,
+  .no-print {
+    display: none !important;
+  }
+
+  @page { 
+    margin: 0; 
+    size: auto; 
+  }
+
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+  }
+
+  div[role="dialog"] {
+    position: relative !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    overflow: visible !important;
+    display: block !important;
+    transform: none !important;
+    animation: none !important;
+    opacity: 1 !important;
+    max-height: none !important;
+    max-width: 100% !important;
+  }
+
+  div[role="dialog"] button,
+  div[role="dialog"] .print\:hidden,
+  div[role="dialog"] .no-print,
+  div[role="dialog"] > footer,
+  div[role="dialog"] > h2,
+  div[role="dialog"] > p {
+    display: none !important;
+  }
+
+  div[role="dialog"] * {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  .thermal-receipt-print-area {
+    display: block !important;
+    visibility: visible !important;
+    position: relative !important;
+    margin: 0 !important;
+    padding: 10px !important;
+    background: white !important;
+    color: black !important;
+    box-shadow: none !important;
+    border: none !important;
+    font-family: 'Courier New', Courier, monospace !important;
+  }
+
+  .printer-58mm { width: 58mm !important; max-width: 58mm !important; }
+  .printer-80mm { width: 80mm !important; max-width: 80mm !important; }
+
+  tr, img, svg {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+}
+
+/* WhatsApp Wallpaper Custom Backgrounds */
+.whatsapp-wallpaper {
+  background-color: #efeae2;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cg fill='%23b4a595' fill-opacity='0.12'%3E%3Cpath d='M10 20c0-2.2 1.8-4 4-4s4 1.8 4 4-1.8 4-4 4-4-1.8-4-4zm30 10c0-2.2 1.8-4 4-4s4 1.8 4 4-1.8 4-4 4-4-1.8-4-4zM20 50c0-2.2 1.8-4 4-4s4 1.8 4 4-1.8 4-4 4-4-1.8-4-4zm40 10c0-2.2 1.8-4 4-4s4 1.8 4 4-1.8 4-4 4-4-1.8-4-4zM60 10c0-2.2 1.8-4 4-4s4 1.8 4 4-1.8 4-4 4-4-1.8-4-4z'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+.dark .whatsapp-wallpaper {
+  background-color: #0b141a;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cg fill='%23ffffff' fill-opacity='0.02'%3E%3Cpath d='M10 20c0-2.2 1.8-4 4-4s4 1.8 4 4-1.8 4-4 4-4-1.8-4-4zm30 10c0-2.2 1.8-4 4-4s4 1.8 4 4-1.8 4-4 4-4-1.8-4-4zM20 50c0-2.2 1.8-4 4-4s4 1.8 4 4-1.8 4-4 4-4-1.8-4-4zm40 10c0-2.2 1.8-4 4-4s4 1.8 4 4-1.8 4-4 4-4-1.8-4-4zM60 10c0-2.2 1.8-4 4-4s4 1.8 4 4-1.8 4-4 4-4-1.8-4-4z'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* Hide native browser password reveal buttons (Edge/IE) to prevent double eye icons */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+}
+/* EBMT Mobile Toast System */
+.ebmt-toast {
+  position: fixed;
+  /* On mobile: appear below the fixed header (56px header + 8px gap) */
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  
+  width: calc(100vw - 20px);
+  max-width: 420px;
+
+  min-height: 42px;
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  padding: 10px 14px;
+
+  background: #ffffff;
+
+  border: 1px solid #dbeafe;
+  border-left: 4px solid #2563eb;
+
+  border-radius: 12px;
+
+  box-shadow:
+    0 4px 12px rgba(0,0,0,.08),
+    0 2px 4px rgba(0,0,0,.04);
+
+  z-index: 99999;
+
+  animation: toastSlide .25s ease;
+}
+
+/* On desktop: standard position */
+@media (min-width: 1024px) {
+  .ebmt-toast {
+    top: 10px;
+  }
+}
+
+.ebmt-toast.success {
+  border-left-color: #22c55e;
+}
+.ebmt-toast.success .toast-icon {
+  background: #22c55e;
+}
+
+.ebmt-toast.error {
+  border-left-color: #ef4444;
+}
+.ebmt-toast.error .toast-icon {
+  background: #ef4444;
+}
+
+.ebmt-toast.warning {
+  border-left-color: #f59e0b;
+}
+.ebmt-toast.warning .toast-icon {
+  background: #f59e0b;
+}
+
+.toast-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  background: #2563eb;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.toast-message {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1e293b;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toast-close {
+  background: none;
+  border: none;
+  width: 22px;
+  height: 22px;
+  cursor: pointer;
+  color: #94a3b8;
+  font-size: 16px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: .2s;
+}
+
+.toast-close:hover {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+@keyframes toastSlide {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}

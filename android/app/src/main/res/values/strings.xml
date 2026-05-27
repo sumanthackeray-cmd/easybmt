@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">EasyBMT</string>
+    <string name="title_activity_main">EasyBMT</string>
+    <string name="package_name">com.easybmt.app</string>
+    <string name="custom_url_scheme">com.easybmt.app</string>
+</resources>

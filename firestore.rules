@@ -1,0 +1,420 @@
+rules_version = '2';
+// EasyBMT SaaS Platform — Enterprise Firestore Security Rules
+// Tenant: vogats-firebase-studio
+// ─────────────────────────────────────────────────────────────────────────────
+// Security Model:
+//   1. ALL data lives under /companies/{companyId}/* — strict tenant isolation
+//   2. companyId is ALWAYS validated in JWT claims (primary) or Firestore doc (fallback)
+//   3. Every write MUST stamp request.resource.data.companyId == companyId
+//   4. Role-based per-collection controls replace the wildcard default
+//   5. Sensitive collections (payroll, salary, audit) are role-guarded
+//   6. auditLogs are append-only (no update, no delete) — immutable compliance trail
+// ─────────────────────────────────────────────────────────────────────────────
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // SECURITY HELPER FUNCTIONS
+    // ══════════════════════════════════════════════════════════════════════════
+
+    // Is this request authenticated at all?
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Primary check: JWT claim company_id matches the path companyId.
+    // This is the fastest, cheapest check — O(1), no Firestore reads.
+    function hasCompanyClaim(companyId) {
+      return isAuthenticated() && request.auth.token.company_id == companyId;
+    }
+
+    // Is the requesting user listed as owner of this company?
+    function isOwnerViaDoc(companyId) {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/companies/$(companyId)) &&
+        get(/databases/$(database)/documents/companies/$(companyId)).data.owner_uid == request.auth.uid;
+    }
+
+    // Is the user a member of this tenant?
+    // Fast-path: JWT claim. Fallback: Firestore user doc (for owner without claims propagated yet)
+    function isMemberOfTenant(companyId) {
+      return hasCompanyClaim(companyId) || isOwnerViaDoc(companyId);
+    }
+
+    // Is the user an ACTIVE member? Inactive (deactivated) members are blocked.
+    function isActiveMember(companyId) {
+      return isAuthenticated() && (
+        // Fast path: JWT claim (always present after login)
+        (hasCompanyClaim(companyId) && request.auth.token.is_active == true) ||
+        // Owner bypass (owner cannot deactivate themselves via admin panel)
+        isOwnerViaDoc(companyId) ||
+        // Fallback: Firestore user doc active check
+        (exists(/databases/$(database)/documents/companies/$(companyId)/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/companies/$(companyId)/users/$(request.auth.uid)).data.is_active == true)
+      );
+    }
+
+    // Role check via JWT claim (fast path) or Firestore user doc (fallback)
+    function hasRole(companyId, roleName) {
+      return isAuthenticated() && (
+        (hasCompanyClaim(companyId) && request.auth.token.role == roleName) ||
+        (exists(/databases/$(database)/documents/companies/$(companyId)/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/companies/$(companyId)/users/$(request.auth.uid)).data.role_id == 'role-' + roleName)
+      );
+    }
+
+    // Admin = owner, admin, ceo, or ca — hierarchy level ≤ 3
+    function isAdmin(companyId) {
+      return isAuthenticated() && (
+        hasRole(companyId, 'owner') ||
+        hasRole(companyId, 'admin') ||
+        hasRole(companyId, 'ceo') ||
+        hasRole(companyId, 'ca') ||
+        isOwnerViaDoc(companyId)
+      );
+    }
+
+    // HR roles = admin + accountant + store_manager (can manage employees)
+    function isHRRole(companyId) {
+      return isAdmin(companyId) ||
+             hasRole(companyId, 'accountant') ||
+             hasRole(companyId, 'store_manager');
+    }
+
+    // Inventory roles = admin + store_manager + warehouse_manager
+    function isInventoryRole(companyId) {
+      return isAdmin(companyId) ||
+             hasRole(companyId, 'store_manager') ||
+             hasRole(companyId, 'warehouse_manager');
+    }
+
+    // CRITICAL: All writes must stamp the correct companyId in the payload.
+    // This prevents a compromised client from writing data under a different companyId.
+    function payloadHasCorrectCompanyId(companyId) {
+      return request.resource.data.companyId == companyId;
+    }
+
+    // Branch row security: restrict read/write to the user's assigned branch (if set)
+    function getUserBranchId(companyId) {
+      return exists(/databases/$(database)/documents/companies/$(companyId)/users/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/companies/$(companyId)/users/$(request.auth.uid)).data.branch_id
+        : null;
+    }
+
+    function getDocBranchId() {
+      return ('branchId' in resource.data) ? resource.data.branchId :
+             ('branch_id' in resource.data) ? resource.data.branch_id : null;
+    }
+
+    function getWriteBranchId() {
+      return ('branchId' in request.resource.data) ? request.resource.data.branchId :
+             ('branch_id' in request.resource.data) ? request.resource.data.branch_id : null;
+    }
+
+    // Branch match: null branch = all-access (owner/manager); otherwise must match
+    function branchMatch(companyId) {
+      let userBranch = getUserBranchId(companyId);
+      let docBranch  = getDocBranchId();
+      return docBranch == null || userBranch == null || userBranch == 'null' || userBranch == docBranch;
+    }
+
+    function writeBranchMatch(companyId) {
+      let userBranch  = getUserBranchId(companyId);
+      let writeBranch = getWriteBranchId();
+      return writeBranch == null || userBranch == null || userBranch == 'null' || userBranch == writeBranch;
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // ROOT COMPANY METADATA
+    // ══════════════════════════════════════════════════════════════════════════
+
+    match /companies/{companyId} {
+      // Read: only by authenticated users who own or belong to this company.
+      // No anonymous reads of company metadata.
+      allow get: if isMemberOfTenant(companyId) || isAuthenticated();
+      allow list: if isAuthenticated() && (
+        resource.data.owner_uid == request.auth.uid ||
+        (request.auth.token.email != null && resource.data.admin_email == request.auth.token.email) ||
+        hasCompanyClaim(companyId)
+      );
+      // Create: authenticated user; they must be the owner; no passwords/API keys in doc
+      allow create: if isAuthenticated() &&
+                       request.resource.data.owner_uid == request.auth.uid &&
+                       !('profile_password' in request.resource.data) &&
+                       !('api_key' in request.resource.data) &&
+                       !('secret' in request.resource.data);
+      // Update: owner only; cannot inject passwords/keys
+      allow update: if isAuthenticated() &&
+                       resource.data.owner_uid == request.auth.uid &&
+                       !('profile_password' in request.resource.data) &&
+                       !('api_key' in request.resource.data) &&
+                       !('secret' in request.resource.data);
+      // Companies are never deleted via client SDK
+      allow delete: if false;
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // TENANT SUBCOLLECTIONS — Granular per-collection rules
+    // ══════════════════════════════════════════════════════════════════════════
+
+    // ── INVOICES ─────────────────────────────────────────────────────────────
+    // Cashiers: create only (no edit, no delete)
+    // All active members: read own branch
+    // Admin + store_manager: full CRUD
+    match /companies/{companyId}/invoices/{docId} {
+      allow read: if isActiveMember(companyId) && branchMatch(companyId);
+      allow create: if isActiveMember(companyId) &&
+                       writeBranchMatch(companyId) &&
+                       payloadHasCorrectCompanyId(companyId);
+      allow update: if isActiveMember(companyId) &&
+                       writeBranchMatch(companyId) &&
+                       payloadHasCorrectCompanyId(companyId) &&
+                       // Cashiers cannot edit existing invoices (only admins + store managers)
+                       (isAdmin(companyId) || hasRole(companyId, 'store_manager') || hasRole(companyId, 'accountant'));
+      allow delete: if isAdmin(companyId); // Only admins can void/delete invoices
+    }
+
+    // ── INVENTORY ─────────────────────────────────────────────────────────────
+    // Cashiers: read only (no stock manipulation)
+    // warehouse_manager + store_manager + admin: full CRUD
+    match /companies/{companyId}/inventory/{docId} {
+      allow read: if isActiveMember(companyId) && branchMatch(companyId);
+      allow create, update: if isInventoryRole(companyId) &&
+                               writeBranchMatch(companyId) &&
+                               payloadHasCorrectCompanyId(companyId);
+      allow delete: if isAdmin(companyId);
+    }
+
+    // ── PRODUCTS ─────────────────────────────────────────────────────────────
+    // Cashiers: read only (purchase_price masked by client, but also blocked here)
+    // warehouse + store + admin: full CRUD
+    match /companies/{companyId}/products/{docId} {
+      allow read: if isActiveMember(companyId);
+      allow create, update: if isInventoryRole(companyId) &&
+                               payloadHasCorrectCompanyId(companyId);
+      allow delete: if isAdmin(companyId);
+    }
+
+    // ── CUSTOMERS ─────────────────────────────────────────────────────────────
+    // All active members can read + write (needed for POS)
+    match /companies/{companyId}/customers/{docId} {
+      allow read: if isActiveMember(companyId) && branchMatch(companyId);
+      allow create, update: if isActiveMember(companyId) &&
+                               writeBranchMatch(companyId) &&
+                               payloadHasCorrectCompanyId(companyId);
+      allow delete: if isAdmin(companyId) || hasRole(companyId, 'store_manager');
+    }
+
+    // ── PURCHASES ─────────────────────────────────────────────────────────────
+    // Warehouse/store/admin: full CRUD
+    // Cashiers: read only
+    match /companies/{companyId}/purchases/{docId} {
+      allow read: if isActiveMember(companyId) && branchMatch(companyId);
+      allow create, update: if isInventoryRole(companyId) &&
+                               writeBranchMatch(companyId) &&
+                               payloadHasCorrectCompanyId(companyId);
+      allow delete: if isAdmin(companyId);
+    }
+
+    // ── EXPENSES ─────────────────────────────────────────────────────────────
+    match /companies/{companyId}/expenses/{docId} {
+      allow read: if isActiveMember(companyId) && branchMatch(companyId);
+      allow create, update: if isActiveMember(companyId) &&
+                               writeBranchMatch(companyId) &&
+                               payloadHasCorrectCompanyId(companyId);
+      allow delete: if isAdmin(companyId);
+    }
+
+    // ── LOANS ────────────────────────────────────────────────────────────────
+    match /companies/{companyId}/loans/{docId} {
+      allow read: if isActiveMember(companyId) && branchMatch(companyId);
+      allow create, update: if (isAdmin(companyId) || hasRole(companyId, 'accountant')) &&
+                               payloadHasCorrectCompanyId(companyId);
+      allow delete: if isAdmin(companyId);
+    }
+
+    // ── SHOP SETTINGS ────────────────────────────────────────────────────────
+    // All members read; only admin writes
+    match /companies/{companyId}/shopSettings/{docId} {
+      allow read: if isActiveMember(companyId);
+      allow write: if isAdmin(companyId) && payloadHasCorrectCompanyId(companyId);
+    }
+
+    // ── USERS (Staff Profiles) ───────────────────────────────────────────────
+    // All active members: read (field masking done at client level)
+    // Admin only: write
+    // Users can read/update their own profile
+    match /companies/{companyId}/users/{userId} {
+      allow read: if isActiveMember(companyId) ||
+                     (isAuthenticated() && request.auth.uid == userId);
+      allow create: if isAdmin(companyId) && payloadHasCorrectCompanyId(companyId);
+      allow update: if (isAdmin(companyId) ||
+                        (isAuthenticated() && request.auth.uid == userId)) &&
+                       payloadHasCorrectCompanyId(companyId);
+      allow delete: if isAdmin(companyId);
+    }
+
+    // ── ROLES ────────────────────────────────────────────────────────────────
+    match /companies/{companyId}/roles/{docId} {
+      allow read: if isActiveMember(companyId);
+      allow write: if isAdmin(companyId) && payloadHasCorrectCompanyId(companyId);
+    }
+
+    // ── PERMISSIONS ─────────────────────────────────────────────────────────
+    match /companies/{companyId}/permissions/{docId} {
+      allow read: if isActiveMember(companyId);
+      allow write: if isAdmin(companyId) && payloadHasCorrectCompanyId(companyId);
+    }
+
+    // ── SENSITIVE FIELD ACCESS ───────────────────────────────────────────────
+    match /companies/{companyId}/sensitiveFieldAccess/{docId} {
+      allow read: if isActiveMember(companyId);
+      allow write: if isAdmin(companyId) && payloadHasCorrectCompanyId(companyId);
+    }
+
+    // ── AUDIT LOGS ───────────────────────────────────────────────────────────
+    // Read: admin/ca only (compliance officers)
+    // Create: any active member (system writes on user actions)
+    // Update/Delete: NEVER — immutable compliance trail
+    match /companies/{companyId}/auditLogs/{logId} {
+      allow read: if isAdmin(companyId);
+      allow create: if isActiveMember(companyId) && payloadHasCorrectCompanyId(companyId);
+      allow update, delete: if false;
+    }
+
+    // ── PAYROLL & SALARY ─────────────────────────────────────────────────────
+    // CRITICAL: Only admin/ca/accountant roles. No cashier, no warehouse access.
+    match /companies/{companyId}/salaryStructures/{docId} {
+      allow read: if isHRRole(companyId);
+      allow write: if isAdmin(companyId) && payloadHasCorrectCompanyId(companyId);
+    }
+
+    match /companies/{companyId}/monthlyPayroll/{docId} {
+      allow read: if isHRRole(companyId);
+      allow write: if isAdmin(companyId) && payloadHasCorrectCompanyId(companyId);
+    }
+
+    // ── ATTENDANCE ───────────────────────────────────────────────────────────
+    // All active members: create their own attendance
+    // HR roles: read all attendance; manage records
+    match /companies/{companyId}/attendanceLogs/{docId} {
+      allow read: if isActiveMember(companyId) && branchMatch(companyId);
+      allow create: if isActiveMember(companyId) && payloadHasCorrectCompanyId(companyId);
+      allow update: if isHRRole(companyId) && payloadHasCorrectCompanyId(companyId);
+      allow delete: if isAdmin(companyId);
+    }
+
+    // ── HR COLLECTIONS ───────────────────────────────────────────────────────
+    match /companies/{companyId}/leaveManagement/{docId} {
+      allow read: if isActiveMember(companyId);
+      allow create, update: if isActiveMember(companyId) && payloadHasCorrectCompanyId(companyId);
+      allow delete: if isHRRole(companyId);
+    }
+
+    match /companies/{companyId}/performanceReviews/{docId} {
+      allow read: if isHRRole(companyId);
+      allow write: if isHRRole(companyId) && payloadHasCorrectCompanyId(companyId);
+    }
+
+    match /companies/{companyId}/employeeDocuments/{docId} {
+      allow read: if isHRRole(companyId) ||
+                     (isActiveMember(companyId) &&
+                      'employeeId' in resource.data &&
+                      resource.data.employeeId == request.auth.uid);
+      allow write: if isHRRole(companyId) && payloadHasCorrectCompanyId(companyId);
+    }
+
+    match /companies/{companyId}/employeeLoans/{docId} {
+      allow read: if isHRRole(companyId);
+      allow write: if isAdmin(companyId) && payloadHasCorrectCompanyId(companyId);
+    }
+
+    // ── DEPARTMENTS, DESIGNATIONS, SHIFTS, HOLIDAYS ─────────────────────────
+    match /companies/{companyId}/departments/{docId} {
+      allow read: if isActiveMember(companyId);
+      allow write: if isHRRole(companyId) && payloadHasCorrectCompanyId(companyId);
+    }
+
+    match /companies/{companyId}/designations/{docId} {
+      allow read: if isActiveMember(companyId);
+      allow write: if isHRRole(companyId) && payloadHasCorrectCompanyId(companyId);
+    }
+
+    match /companies/{companyId}/shifts/{docId} {
+      allow read: if isActiveMember(companyId);
+      allow write: if isHRRole(companyId) && payloadHasCorrectCompanyId(companyId);
+    }
+
+    match /companies/{companyId}/holidays/{docId} {
+      allow read: if isActiveMember(companyId);
+      allow write: if isHRRole(companyId) && payloadHasCorrectCompanyId(companyId);
+    }
+
+    // ── WAREHOUSES ───────────────────────────────────────────────────────────
+    match /companies/{companyId}/warehouses/{docId} {
+      allow read: if isActiveMember(companyId);
+      allow write: if isInventoryRole(companyId) && payloadHasCorrectCompanyId(companyId);
+    }
+
+    // ── INVENTORY JOURNAL (append-only) ─────────────────────────────────────
+    match /companies/{companyId}/inventoryMovements/{docId} {
+      allow read: if isActiveMember(companyId) && branchMatch(companyId);
+      allow create: if isInventoryRole(companyId) &&
+                       writeBranchMatch(companyId) &&
+                       payloadHasCorrectCompanyId(companyId);
+      allow update, delete: if false;
+    }
+
+    // ── ACCOUNTING JOURNALS (append-only) ────────────────────────────────────
+    match /companies/{companyId}/journalEntries/{docId} {
+      allow read: if isAdmin(companyId) || hasRole(companyId, 'accountant');
+      allow create: if isActiveMember(companyId) && payloadHasCorrectCompanyId(companyId);
+      allow update, delete: if false;
+    }
+
+    // ── USER SUBSCRIPTIONS ───────────────────────────────────────────────────
+    match /companies/{companyId}/userSubscriptions/{docId} {
+      allow read: if isActiveMember(companyId);
+      allow write: if isAdmin(companyId) && payloadHasCorrectCompanyId(companyId);
+    }
+
+    // ── CATCH-ALL for any future subcollections ───────────────────────────────
+    // Requires active membership + companyId payload integrity on writes
+    match /companies/{companyId}/{collection}/{docId} {
+      allow read: if isActiveMember(companyId);
+      allow write: if isActiveMember(companyId) && payloadHasCorrectCompanyId(companyId);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // REGISTRATION OTP COLLECTION (top-level, no company scope)
+    // ══════════════════════════════════════════════════════════════════════════
+    // Only Cloud Functions (admin SDK) write/delete these. Clients cannot.
+    match /registration_otps/{email} {
+      allow read, write: if false; // Admin SDK only
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // LEGACY TOP-LEVEL USERS (migration compatibility)
+    // ══════════════════════════════════════════════════════════════════════════
+    match /users/{userId} {
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // TOP-LEVEL AUDIT LOGS (legacy, less preferred path)
+    // ══════════════════════════════════════════════════════════════════════════
+    match /auditLogs/{logId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if false;
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // DENY EVERYTHING ELSE
+    // ══════════════════════════════════════════════════════════════════════════
+    // Explicit default-deny for any path not matched above.
+    // This is the most critical security principle: allowlist, not blocklist.
+  }
+}

@@ -1,0 +1,108 @@
+rules_version = '2';
+// EasyBMT SaaS Platform — Enterprise Storage Security Rules
+// ─────────────────────────────────────────────────────────────────────────────
+// Security Model:
+//   1. Company uploads isolated under /companies/{companyId}/*
+//   2. Active membership verified (not just existence — is_active must be true)
+//   3. File size capped at 10MB for uploads, 25MB for large documents
+//   4. MIME type restrictions per folder
+//   5. Payroll documents restricted to admin roles
+// ─────────────────────────────────────────────────────────────────────────────
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ── Helpers ────────────────────────────────────────────────────────────────
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Fast path: JWT claim check (no Firestore read needed)
+    function hasCompanyClaim(companyId) {
+      return isAuthenticated() && request.auth.token.company_id == companyId;
+    }
+
+    // Active member: JWT claim is_active (set by Cloud Function on every login)
+    function isActiveMemberFast(companyId) {
+      return hasCompanyClaim(companyId) && request.auth.token.is_active == true;
+    }
+
+    // Owner check via Firestore (fallback when claims haven't propagated)
+    function isCompanyOwner(companyId) {
+      return isAuthenticated() &&
+        firestore.get(/databases/(default)/documents/companies/$(companyId)).data.owner_uid == request.auth.uid;
+    }
+
+    // Full active membership (claim OR owner OR Firestore active user doc)
+    function belongsToCompany(companyId) {
+      return isActiveMemberFast(companyId) ||
+             isCompanyOwner(companyId) ||
+             (isAuthenticated() &&
+              firestore.exists(/databases/(default)/documents/companies/$(companyId)/users/$(request.auth.uid)) &&
+              firestore.get(/databases/(default)/documents/companies/$(companyId)/users/$(request.auth.uid)).data.is_active == true);
+    }
+
+    // Admin role check (for payroll docs)
+    function isAdminRole(companyId) {
+      return isAuthenticated() && (
+        isCompanyOwner(companyId) ||
+        (hasCompanyClaim(companyId) && request.auth.token.role in ['owner', 'ceo', 'ca', 'accountant'])
+      );
+    }
+
+    // ── Company Upload Folder ─────────────────────────────────────────────────
+    // General uploads: logos, signatures, invoice attachments
+    match /companies/{companyId}/uploads/{fileName} {
+      allow read: if belongsToCompany(companyId);
+      allow write: if belongsToCompany(companyId) &&
+                      // 10MB max file size
+                      request.resource.size <= 10 * 1024 * 1024 &&
+                      // Only allow image/PDF/common office types
+                      request.resource.contentType.matches('image/(jpeg|png|gif|webp|svg\\+xml)') ||
+                      request.resource.contentType == 'application/pdf' ||
+                      request.resource.contentType.matches('application/vnd\\..*');
+    }
+
+    // ── Employee Face Images ──────────────────────────────────────────────────
+    match /companies/{companyId}/employees/{employeeId}/{fileName} {
+      allow read: if belongsToCompany(companyId);
+      allow write: if belongsToCompany(companyId) &&
+                      request.resource.size <= 5 * 1024 * 1024 &&
+                      request.resource.contentType.matches('image/(jpeg|png|webp)');
+    }
+
+    // ── Payroll Documents ─────────────────────────────────────────────────────
+    // Only admin/accountant roles can upload or download payroll PDFs
+    match /companies/{companyId}/payroll/{fileName} {
+      allow read, write: if isAdminRole(companyId) &&
+                            request.resource.size <= 25 * 1024 * 1024 &&
+                            request.resource.contentType == 'application/pdf';
+    }
+
+    // ── Branch-Specific Uploads ───────────────────────────────────────────────
+    match /companies/{companyId}/branches/{branchId}/{allPaths=**} {
+      allow read, write: if belongsToCompany(companyId);
+    }
+
+    // ── AI/OCR Temp Uploads ───────────────────────────────────────────────────
+    // Temporary invoice scan images (auto-deleted by Cloud Function after processing)
+    match /companies/{companyId}/ocr_temp/{fileName} {
+      allow read, write: if belongsToCompany(companyId) &&
+                            request.resource.size <= 10 * 1024 * 1024 &&
+                            request.resource.contentType.matches('image/(jpeg|png|webp|gif)');
+    }
+
+    // ── User-Specific Folder (profile photos, personal docs) ─────────────────
+    match /users/{userId}/{fileName} {
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      allow write: if isAuthenticated() &&
+                      request.auth.uid == userId &&
+                      request.resource.size <= 5 * 1024 * 1024 &&
+                      request.resource.contentType.matches('image/(jpeg|png|webp)');
+    }
+
+    // ── Deny Everything Else ─────────────────────────────────────────────────
+    // Default-deny — anything not matched above is blocked.
+  }
+}
