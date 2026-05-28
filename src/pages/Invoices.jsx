@@ -164,7 +164,17 @@ export default function Invoices() {
         let seqKeyToUpdate = null;
         
         while (!created && attempts < 10) {
-          const seqInfo = getDocumentSequence(formData.type || "sale", shopSettings);
+          let docType = formData.type || "sale";
+          if (docType === "sale") {
+            if (formData.invoice_type === "GST") {
+              docType = "gst";
+            } else if (formData.invoice_type === "Bill of Supply") {
+              docType = "bill";
+            } else {
+              docType = "inv";
+            }
+          }
+          const seqInfo = getDocumentSequence(docType, shopSettings);
           // If attempts > 0, we temporarily bump it manually here to try again
           invoiceNumber = seqInfo.invoiceNumber;
           if (attempts > 0) {

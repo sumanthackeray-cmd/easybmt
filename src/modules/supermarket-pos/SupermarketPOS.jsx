@@ -728,7 +728,7 @@ function Terminal({ activeSession, products, activeOffers, loyaltyCards, custome
     }
 
     try {
-      const seqInfo = getDocumentSequence("sale", shopSettings);
+      const seqInfo = getDocumentSequence("inv", shopSettings);
       const billNo = seqInfo.invoiceNumber;
       const seqKeyToUpdate = `${seqInfo.prefixKey}_seq`;
 

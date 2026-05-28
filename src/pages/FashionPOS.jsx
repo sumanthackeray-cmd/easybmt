@@ -700,7 +700,8 @@ export default function FashionPOS() {
     setIsProcessingCheckout(true);
 
     try {
-      const seqInfo = getDocumentSequence("sale", shopSettings);
+      const docType = billingType === "B2B" ? "gst" : "inv";
+      const seqInfo = getDocumentSequence(docType, shopSettings);
       const invoiceNo = editingInvoiceId && latestInvoice
         ? latestInvoice.invoice_number 
         : seqInfo.invoiceNumber;

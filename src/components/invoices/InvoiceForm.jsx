@@ -8,9 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { INDIAN_STATES, GST_RATES, calcItems, numToWords, fmtINR, today, addDays } from "@/lib/gst-utils";
-import { X, Search, Eye, Plus, Printer, Check } from "lucide-react";
+import { X, Search, Eye, Plus, Printer, Check, Download } from "lucide-react";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { toast } from "@/lib/toast";
+import { downloadInvoicePDF } from "@/lib/pdf-share-utils";
 import { fetchGSTDetailsFromPortal } from "@/services/gst/gst-lookup";
 
 export default function InvoiceForm({ open, onOpenChange, invoice, customers = [], products = [], onSave, type = "sale" }) {
@@ -41,7 +42,6 @@ export default function InvoiceForm({ open, onOpenChange, invoice, customers = [
   const [showAddlDiscount, setShowAddlDiscount] = useState(false);
   const [showReference, setShowReference] = useState(false);
   const [showShipping, setShowShipping] = useState(false);
-  const [activePaymentTab, setActivePaymentTab] = useState("payment1");
 
   const [form, setForm] = useState({
     date: invoice?.date || today(),
@@ -401,6 +401,17 @@ export default function InvoiceForm({ open, onOpenChange, invoice, customers = [
   const handleSave = () => {
     // Combined dual-payment values
     const paidAmountSum = (Number(form.payment1_amount) || 0) + (Number(form.payment2_amount) || 0);
+    const finalPaidAmount = paidAmountSum || Number(form.paid_amount) || 0;
+    
+    let dynamicStatus = form.status;
+    if (finalPaidAmount >= erpTotals.grandTotal) {
+      dynamicStatus = "paid";
+    } else if (finalPaidAmount > 0) {
+      dynamicStatus = "partial";
+    } else {
+      dynamicStatus = "unpaid";
+    }
+
     onSave({
       ...form,
       invoice_type: invoiceType,
@@ -409,7 +420,8 @@ export default function InvoiceForm({ open, onOpenChange, invoice, customers = [
       subtotal: erpTotals.subtotal,
       tax_amount: erpTotals.cgst + erpTotals.sgst + erpTotals.igst,
       is_interstate: form.place_of_supply && form.place_of_supply.split("-")[0] !== "05",
-      paid_amount: paidAmountSum || form.paid_amount,
+      paid_amount: finalPaidAmount,
+      status: dynamicStatus
     });
   };
 
@@ -422,6 +434,18 @@ export default function InvoiceForm({ open, onOpenChange, invoice, customers = [
 
   const handlePreview = () => {
     const isInter = form.place_of_supply && form.place_of_supply.split("-")[0] !== "05";
+    const paidAmountSum = (Number(form.payment1_amount) || 0) + (Number(form.payment2_amount) || 0);
+    const finalPaidAmount = paidAmountSum || Number(form.paid_amount) || 0;
+    
+    let dynamicStatus = form.status;
+    if (finalPaidAmount >= erpTotals.grandTotal) {
+      dynamicStatus = "paid";
+    } else if (finalPaidAmount > 0) {
+      dynamicStatus = "partial";
+    } else {
+      dynamicStatus = "unpaid";
+    }
+
     const data = {
       ...form,
       invoice_type: invoiceType,
@@ -430,11 +454,50 @@ export default function InvoiceForm({ open, onOpenChange, invoice, customers = [
       subtotal: erpTotals.subtotal,
       tax_amount: erpTotals.cgst + erpTotals.sgst + erpTotals.igst,
       is_interstate: isInter,
+      paid_amount: finalPaidAmount,
+      status: dynamicStatus,
       invoice_number: invoice?.invoice_number || "PREVIEW",
       source: "general"
     };
     setPreviewData(data);
     setShowPreview(true);
+  };
+
+  const handleDownload = async () => {
+    const isInter = form.place_of_supply && form.place_of_supply.split("-")[0] !== "05";
+    const paidAmountSum = (Number(form.payment1_amount) || 0) + (Number(form.payment2_amount) || 0);
+    const finalPaidAmount = paidAmountSum || Number(form.paid_amount) || 0;
+    
+    let dynamicStatus = form.status;
+    if (finalPaidAmount >= erpTotals.grandTotal) {
+      dynamicStatus = "paid";
+    } else if (finalPaidAmount > 0) {
+      dynamicStatus = "partial";
+    } else {
+      dynamicStatus = "unpaid";
+    }
+
+    const data = {
+      ...form,
+      invoice_type: invoiceType,
+      bill_to_type: billToType,
+      grand_total: erpTotals.grandTotal,
+      subtotal: erpTotals.subtotal,
+      tax_amount: erpTotals.cgst + erpTotals.sgst + erpTotals.igst,
+      is_interstate: isInter,
+      paid_amount: finalPaidAmount,
+      status: dynamicStatus,
+      invoice_number: invoice?.invoice_number || "DRAFT",
+      source: "general"
+    };
+
+    try {
+      toast.loading("Generating PDF...", { id: "inv-pdf" });
+      await downloadInvoicePDF(data, shopSettings, false);
+      toast.success("PDF downloaded!", { id: "inv-pdf" });
+    } catch (err) {
+      toast.error("Failed to generate PDF: " + err.message, { id: "inv-pdf" });
+    }
   };
 
   // Derive Particular item preview amount
@@ -459,6 +522,9 @@ export default function InvoiceForm({ open, onOpenChange, invoice, customers = [
           <DialogTitle className="text-md font-black text-foreground">
             {invoice ? `Edit ${invoice.invoice_number}` : `New ${typeLabel}`}
           </DialogTitle>
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="border-border bg-background text-muted-foreground hover:bg-accent h-8 rounded-lg text-xs ml-auto">
+            <X className="w-4 h-4" /> <span className="hidden sm:inline ml-1">Cancel</span>
+          </Button>
         </DialogHeader>
 
         {/* Dense Scrollable Form Body */}
@@ -851,56 +917,68 @@ export default function InvoiceForm({ open, onOpenChange, invoice, customers = [
                 </div>
               </div>
 
-              {/* ERP Dual Payment Slots Tabs */}
-              <div className="border border-border bg-card rounded-xl overflow-hidden shadow-sm">
-                <div className="flex bg-muted border-b border-border">
-                  <button type="button" onClick={() => setActivePaymentTab("payment1")} className={`px-4 py-2.5 text-xs font-bold transition-all ${activePaymentTab === "payment1" ? "bg-card text-blue-600 border-t-2 border-blue-500" : "text-muted-foreground hover:text-foreground"}`}>
-                    💰 Payment Receipt 1
-                  </button>
-                  <button type="button" onClick={() => setActivePaymentTab("payment2")} className={`px-4 py-2.5 text-xs font-bold transition-all ${activePaymentTab === "payment2" ? "bg-card text-blue-600 border-t-2 border-blue-500" : "text-muted-foreground hover:text-foreground"}`}>
-                    💳 Payment Receipt 2
-                  </button>
+              {/* POS-like Split Payment Logic */}
+              <div className="border border-border bg-card rounded-xl overflow-hidden shadow-sm flex flex-col">
+                <div className="p-3 bg-muted border-b border-border font-bold text-xs flex justify-between items-center">
+                  <span>💰 Payment Receipt</span>
+                  {erpTotals.grandTotal - (Number(form.payment1_amount) || 0) - (Number(form.payment2_amount) || 0) > 0 && (
+                     <span className="text-red-500 bg-red-500/10 px-2 py-0.5 rounded">Balance: {fmtINR(erpTotals.grandTotal - (Number(form.payment1_amount) || 0) - (Number(form.payment2_amount) || 0))}</span>
+                  )}
                 </div>
                 
-                <div className="p-4 bg-card/60">
-                  {activePaymentTab === "payment1" ? (
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                      <div className="space-y-1">
-                        <Label className="text-[9px] text-muted-foreground">Date</Label>
-                        <Input type="date" value={form.payment1_date} onChange={e => set("payment1_date", e.target.value)} className="h-8 bg-background border-input text-foreground text-xs" />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-[9px] text-muted-foreground">Mode</Label>
-                        <SearchableSelect
-                          options={[
-                            { label: "Cash", value: "Cash" },
-                            { label: "UPI", value: "UPI" },
-                            { label: "Card", value: "Card" },
-                            { label: "Net Banking", value: "Net Banking" },
-                            { label: "Cheque", value: "Cheque" },
-                          ]}
-                          value={form.payment1_mode}
-                          onValueChange={v => set("payment1_mode", v)}
-                          placeholder="Mode"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-[9px] text-muted-foreground font-mono">Transaction ID</Label>
-                        <Input placeholder="Optional reference" value={form.payment1_txn_id} onChange={e => set("payment1_txn_id", e.target.value)} className="h-8 bg-background border-input text-foreground text-xs font-mono" />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-[9px] text-muted-foreground">Amount Paid (₹) *</Label>
-                        <Input type="number" value={form.payment1_amount || ""} onChange={e => set("payment1_amount", Number(e.target.value))} className="h-8 bg-background border-input text-foreground text-xs font-mono font-bold text-blue-600" />
-                      </div>
+                <div className="p-4 bg-card/60 space-y-4">
+                  {/* Payment 1 */}
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-[9px] text-muted-foreground">Date</Label>
+                      <Input type="date" value={form.payment1_date} onChange={e => set("payment1_date", e.target.value)} className="h-8 bg-background border-input text-foreground text-xs" />
                     </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-[9px] text-muted-foreground">Mode</Label>
+                      <SearchableSelect
+                        options={[
+                          { label: "Cash", value: "Cash" },
+                          { label: "UPI", value: "UPI" },
+                          { label: "Card", value: "Card" },
+                          { label: "Net Banking", value: "Net Banking" },
+                          { label: "Cheque", value: "Cheque" },
+                        ]}
+                        value={form.payment1_mode}
+                        onValueChange={v => set("payment1_mode", v)}
+                        placeholder="Mode"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[9px] text-muted-foreground font-mono">Transaction ID</Label>
+                      <Input placeholder="Optional reference" value={form.payment1_txn_id} onChange={e => set("payment1_txn_id", e.target.value)} className="h-8 bg-background border-input text-foreground text-xs font-mono" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[9px] text-muted-foreground">Amount Paid (₹) *</Label>
+                      <Input type="number" value={form.payment1_amount === 0 ? "" : form.payment1_amount} onChange={e => {
+                        const val = Number(e.target.value);
+                        setForm(f => {
+                          const newState = { ...f, payment1_amount: val };
+                          if (val > 0 && val < erpTotals.grandTotal && !f.payment2_amount) {
+                            newState.payment2_amount = erpTotals.grandTotal - val;
+                            newState.payment2_mode = f.payment1_mode === "Cash" ? "UPI" : "Cash";
+                          } else if (val >= erpTotals.grandTotal) {
+                            newState.payment2_amount = 0;
+                          }
+                          return newState;
+                        });
+                      }} className="h-8 bg-background border-input text-foreground text-xs font-mono font-bold text-blue-600" />
+                    </div>
+                  </div>
+
+                  {/* Payment 2 (Auto reveals if there is a split) */}
+                  {(Number(form.payment2_amount) > 0 || (Number(form.payment1_amount) > 0 && Number(form.payment1_amount) < erpTotals.grandTotal)) && (
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3 pt-3 border-t border-border/50 animate-in fade-in slide-in-from-top-4">
                       <div className="space-y-1">
-                        <Label className="text-[9px] text-muted-foreground">Date</Label>
+                        <Label className="text-[9px] text-muted-foreground">Split Date</Label>
                         <Input type="date" value={form.payment2_date} onChange={e => set("payment2_date", e.target.value)} className="h-8 bg-background border-input text-foreground text-xs" />
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-[9px] text-muted-foreground">Mode</Label>
+                        <Label className="text-[9px] text-muted-foreground">Split Mode</Label>
                         <SearchableSelect
                           options={[
                             { label: "Cash", value: "Cash" },
@@ -919,8 +997,8 @@ export default function InvoiceForm({ open, onOpenChange, invoice, customers = [
                         <Input placeholder="Optional reference" value={form.payment2_txn_id} onChange={e => set("payment2_txn_id", e.target.value)} className="h-8 bg-background border-input text-foreground text-xs font-mono" />
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-[9px] text-muted-foreground">Amount Paid (₹) *</Label>
-                        <Input type="number" value={form.payment2_amount || ""} onChange={e => set("payment2_amount", Number(e.target.value))} className="h-8 bg-background border-input text-foreground text-xs font-mono font-bold text-blue-600" />
+                        <Label className="text-[9px] text-muted-foreground">Split Amount (₹)</Label>
+                        <Input type="number" value={form.payment2_amount === 0 ? "" : form.payment2_amount} onChange={e => set("payment2_amount", Number(e.target.value))} className="h-8 bg-background border-input text-foreground text-xs font-mono font-bold text-emerald-600" />
                       </div>
                     </div>
                   )}
@@ -1011,34 +1089,42 @@ export default function InvoiceForm({ open, onOpenChange, invoice, customers = [
         </div>
 
         {/* Sticky ERP Footer Actions */}
-        <div className="p-4 border-t border-border bg-card shrink-0 sticky bottom-0 z-20 flex flex-col sm:flex-row gap-3 items-center justify-between">
-          <div className="flex gap-2.5 w-full sm:w-auto">
+        <div className="p-4 border-t border-border bg-card shrink-0 sticky bottom-0 z-20 flex gap-3 items-center justify-between">
+          <div className="flex gap-2.5 w-full justify-end sm:justify-start">
             <Button
               onClick={handleSave}
               disabled={erpTotals.itemsCalculated.length === 0}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold flex items-center gap-1.5 px-5 h-10 shadow-lg rounded-lg text-xs"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold flex items-center gap-1.5 px-3 sm:px-5 h-10 shadow-lg rounded-lg text-xs"
             >
-              <Printer className="w-4 h-4" /> Save and Print
+              <Printer className="w-4 h-4" /> <span className="hidden sm:inline">Save and Print</span>
             </Button>
             
             <Button
               onClick={handleSave}
               disabled={erpTotals.itemsCalculated.length === 0}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold flex items-center gap-1.5 px-5 h-10 shadow-lg rounded-lg text-xs"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold flex items-center gap-1.5 px-3 sm:px-5 h-10 shadow-lg rounded-lg text-xs"
             >
-              <Check className="w-4 h-4" /> Save
+              <Check className="w-4 h-4" /> <span className="hidden sm:inline">Save</span>
             </Button>
 
             <Button
               variant="outline"
               onClick={handlePreview}
               disabled={erpTotals.itemsCalculated.length === 0}
-              className="border-border bg-background text-foreground hover:bg-accent gap-1.5 px-4 h-10 rounded-lg text-xs"
+              className="border-border bg-background text-foreground hover:bg-accent gap-1.5 px-3 sm:px-4 h-10 rounded-lg text-xs"
             >
-              <Eye className="w-4 h-4" /> Preview Draft
+              <Eye className="w-4 h-4" /> <span className="hidden sm:inline">Preview Draft</span>
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={handleDownload}
+              disabled={erpTotals.itemsCalculated.length === 0}
+              className="border-border bg-background text-foreground hover:bg-accent gap-1.5 px-3 sm:px-4 h-10 rounded-lg text-xs"
+            >
+              <Download className="w-4 h-4" /> <span className="hidden sm:inline">Download</span>
             </Button>
           </div>
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="border-border bg-background text-muted-foreground hover:bg-accent w-full sm:w-auto h-10 rounded-lg text-xs">Cancel</Button>
         </div>
       </DialogContent>
 

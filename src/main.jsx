@@ -28,24 +28,28 @@ if (typeof window !== 'undefined') {
     capVal.isNative = Capacitor.isNativePlatform();
   } catch (_) {}
   
-  Object.defineProperty(window, 'Capacitor', {
-    get() {
-      if (capVal && capVal.isNative === undefined) {
+  try {
+    Object.defineProperty(window, 'Capacitor', {
+      get() {
+        if (capVal && capVal.isNative === undefined) {
+          try {
+            capVal.isNative = Capacitor.isNativePlatform();
+          } catch (_) {}
+        }
+        return capVal;
+      },
+      set(newVal) {
+        capVal = newVal || {};
         try {
           capVal.isNative = Capacitor.isNativePlatform();
         } catch (_) {}
-      }
-      return capVal;
-    },
-    set(newVal) {
-      capVal = newVal || {};
-      try {
-        capVal.isNative = Capacitor.isNativePlatform();
-      } catch (_) {}
-    },
-    configurable: true,
-    enumerable: true
-  });
+      },
+      configurable: true,
+      enumerable: true
+    });
+  } catch (err) {
+    console.warn("Failed to define Capacitor global interceptor (property is likely read-only):", err);
+  }
 }
 import '@/index.css'
 import { ThemeProvider } from "@/components/theme-provider"

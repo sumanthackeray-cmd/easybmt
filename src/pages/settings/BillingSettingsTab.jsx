@@ -86,6 +86,13 @@ export default function BillingSettingsTab({ form, set }) {
         />
 
         <ToggleSetting
+          label="Allow Negative Stock"
+          description="Allows you to create invoices even if an item's stock is zero"
+          field="allow_negative_stock"
+          value={form.allow_negative_stock}
+        />
+
+        <ToggleSetting
           label="Sale Price Change"
           description="Allows you to change sale price at the time of billing"
           field="allow_sale_price_change"

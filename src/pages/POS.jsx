@@ -1463,7 +1463,8 @@ function POSContent() {
           toast.success("Invoice updated successfully!");
         } else {
           // Standard Checkout: create new invoice
-          const seqInfo = getDocumentSequence("sale", shopSettings);
+          const docType = billingType === "B2B" ? "gst" : "inv";
+          const seqInfo = getDocumentSequence(docType, shopSettings);
           const invoiceNum = seqInfo.invoiceNumber;
           const seqKeyToUpdate = `${seqInfo.prefixKey}_seq`;
           
