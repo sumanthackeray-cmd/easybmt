@@ -1,7 +1,7 @@
 # PowerShell script to resize and generate Android icons using high quality System.Drawing
 [void][System.Reflection.Assembly]::LoadWithPartialName("System.Drawing")
 
-$sourcePath = "C:\Users\Admin\.gemini\antigravity-ide\brain\0272f714-c8b8-40d0-a78a-7707f4ca1864\media__1779939116336.png"
+$sourcePath = "C:\Users\Admin\.gemini\antigravity-ide\brain\0272f714-c8b8-40d0-a78a-7707f4ca1864\media__1779952030148.png"
 if (-not (Test-Path $sourcePath)) {
     # Try local assets path
     $sourcePath = "D:\Old PC\Billing\Final\easybmt_project\assets\icon.png"
