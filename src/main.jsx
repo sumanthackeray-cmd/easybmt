@@ -1,20 +1,3 @@
-// Force Vercel rebuild trigger: 2026-05-28
-// Prevent React DOM crashes from browser extensions / Google Translate
-if (typeof window !== 'undefined') {
-  const nativeRemoveChild = Node.prototype.removeChild;
-  Node.prototype.removeChild = function (child) {
-    if (child?.parentNode !== this) return child;
-    return nativeRemoveChild.apply(this, arguments);
-  };
-
-  const nativeInsertBefore = Node.prototype.insertBefore;
-  Node.prototype.insertBefore = function (newNode, referenceNode) {
-    if (newNode?.parentNode === this && referenceNode === newNode) return newNode;
-    if (referenceNode && referenceNode.parentNode !== this) return newNode;
-    return nativeInsertBefore.apply(this, arguments);
-  };
-}
-
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { registerSW } from 'virtual:pwa-register'
@@ -78,6 +61,21 @@ if (typeof window !== 'undefined') {
     // Suppress benign Firebase auth promise cancellations
     const reason = event.reason;
     if (reason?.code === 'auth/popup-closed-by-user') return;
+    const message = String(reason?.message || reason || '');
+    // Recover once from stale chunk/service-worker cache mismatches after deployment.
+    if (
+      import.meta.env.PROD &&
+      (message.includes('Failed to fetch dynamically imported module') ||
+        message.includes('Importing a module script failed') ||
+        message.includes('Loading chunk'))
+    ) {
+      const key = '__easybmt_chunk_recover_once';
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, '1');
+        window.location.reload();
+        return;
+      }
+    }
     errorLogger.captureError('UnhandledRejection', reason instanceof Error ? reason : new Error(String(reason)));
   });
 }
@@ -160,13 +158,36 @@ class RootErrorBoundary extends React.Component {
   }
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <RootErrorBoundary>
-    <ThemeProvider defaultTheme="light" enableSystem={false} storageKey="vite-ui-theme" attribute="class">
-      <LanguageProvider>
-        <App />
-      </LanguageProvider>
-    </ThemeProvider>
-  </RootErrorBoundary>
-)
+const mountNode = document.getElementById('root');
+
+const renderBootError = (error) => {
+  if (!mountNode) return;
+  mountNode.innerHTML = `
+    <div style="padding:24px;background:#0f0f1a;color:#ff4444;font-family:system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;">
+      <div style="font-size:40px;">Error</div>
+      <h2 style="color:#ff8800;margin:0;">EasyBMT failed to start</h2>
+      <p style="color:#aaa;max-width:520px;text-align:center;margin:0;">${String(error?.message || 'Unexpected startup error')}</p>
+      <button onclick="window.location.reload()" style="padding:10px 24px;background:#ff8800;color:#000;border:none;border-radius:8px;cursor:pointer;font-weight:700;">Reload App</button>
+    </div>
+  `;
+};
+
+try {
+  if (!mountNode) {
+    throw new Error('Root element #root not found');
+  }
+
+  ReactDOM.createRoot(mountNode).render(
+    <RootErrorBoundary>
+      <ThemeProvider defaultTheme="light" enableSystem={false} storageKey="vite-ui-theme" attribute="class">
+        <LanguageProvider>
+          <App />
+        </LanguageProvider>
+      </ThemeProvider>
+    </RootErrorBoundary>
+  );
+} catch (error) {
+  errorLogger.captureError('Boot', error);
+  renderBootError(error);
+}
 
