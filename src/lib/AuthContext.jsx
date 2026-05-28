@@ -57,6 +57,13 @@ export const AuthProvider = ({ children }) => {
       return null;
     }
   });
+  const [companyId, setCompanyId] = useState(() => {
+    try {
+      return localStorage.getItem('company_id') || null;
+    } catch {
+      return null;
+    }
+  });
 
   useEffect(() => {
     // Never leave the app on a blank screen if Firebase auth is slow/unreachable
@@ -180,9 +187,11 @@ export const AuthProvider = ({ children }) => {
 
           if (resolvedCompanyId) {
             localStorage.setItem('company_id', resolvedCompanyId);
+            setCompanyId(resolvedCompanyId);
             await initializeLocalArchitecture().catch(console.error);
           } else {
             localStorage.removeItem('company_id');
+            setCompanyId(null);
           }
 
 
@@ -690,8 +699,10 @@ export const AuthProvider = ({ children }) => {
       } else {
         setUser(null);
         setIsAuthenticated(false);
+        setCompanyId(null);
         localStorage.removeItem('base44_access_token');
         localStorage.removeItem('base44_cached_user');
+        localStorage.removeItem('company_id');
       }
       
       setIsLoadingPublicSettings(false);
@@ -737,6 +748,7 @@ export const AuthProvider = ({ children }) => {
       isLoadingPublicSettings,
       authError,
       appPublicSettings,
+      companyId,
       authChecked,
       logout,
       navigateToLogin,

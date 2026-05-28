@@ -8,14 +8,16 @@ import { useAuth } from "@/lib/AuthContext";
 export function useDashboardData(startDate, endDate) {
   const { shopSettings } = useShopSettings();
   const businessType = shopSettings.business_type || "retail";
-  const { user } = useAuth();
+  const { user, companyId, authChecked } = useAuth();
   const isOwnDataOnly = user?.permissions?.dashboard?.own_data_only;
+  const isDataReady = !!user && !!companyId && authChecked;
 
   const { data: rawInvoices = [], refetch: refetchInvoices } = useQuery({
     queryKey: ["invoices"],
     queryFn: () => base44.entities.Invoice.list("-created_date", 500),
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
+    enabled: isDataReady,
   });
 
   const invoices = useMemo(() => {
@@ -29,33 +31,39 @@ export function useDashboardData(startDate, endDate) {
     queryFn: () => base44.entities.Customer.list(),
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
+    enabled: isDataReady,
   });
   const { data: products = [], refetch: refetchProducts } = useQuery({
     queryKey: ["products"],
     queryFn: () => base44.entities.Product.list(),
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
+    enabled: isDataReady,
   });
   const { data: purchases = [], refetch: refetchPurchases } = useQuery({
     queryKey: ["purchases"],
     queryFn: () => base44.entities.Purchase.list("-created_date", 200),
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
+    enabled: isDataReady,
   });
   const { data: expenses = [], refetch: refetchExpenses } = useQuery({
     queryKey: ["expenses"],
     queryFn: () => base44.entities.Expense.list("-created_date", 200),
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
+    enabled: isDataReady,
   });
   const { data: loans = [], refetch: refetchLoans } = useQuery({
     queryKey: ["loans"],
     queryFn: () => base44.entities.Loan.list(),
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
+    enabled: isDataReady,
   });
 
   const refetchAll = () => {
+    if (!isDataReady) return;
     refetchInvoices();
     refetchCustomers();
     refetchProducts();
@@ -153,6 +161,7 @@ export function useDashboardData(startDate, endDate) {
     salesTrend,
     dailyData,
     monthlyData,
+    isDataReady,
     refetchAll
   };
 }

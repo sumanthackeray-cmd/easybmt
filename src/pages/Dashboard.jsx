@@ -10,7 +10,7 @@ const EnterpriseDashboard = React.lazy(() => import("@/components/dashboards/Ent
 const StaffDashboard = React.lazy(() => import("@/components/dashboards/StaffDashboard"));
 
 export default function DashboardRouter() {
-  const { user } = useAuth();
+  const { user, companyId, authChecked } = useAuth();
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
     d.setDate(1);
@@ -23,8 +23,9 @@ export default function DashboardRouter() {
   const { isSupermarket } = useSupermarketMode();
 
   useEffect(() => {
+    if (!authChecked || !user || !companyId) return;
     refetchAll();
-  }, [startDate, endDate]);
+  }, [startDate, endDate, authChecked, user, companyId, refetchAll]);
 
   const renderDashboard = () => {
     return <EnterpriseDashboard data={dashboardData} />;

@@ -73,15 +73,15 @@ const LoadingFallback = () => (
 );
 
 const AuthenticatedApp = () => {
-  const { user, isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  const { user, companyId, authChecked, isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
 
   useEffect(() => {
-    if (user) {
+    if (user && authChecked && companyId) {
       warmCriticalCaches();
     } else {
       resetPrefetchState();
     }
-  }, [user]);
+  }, [user, authChecked, companyId]);
 
   if (isLoadingPublicSettings || isLoadingAuth) {
     return (
