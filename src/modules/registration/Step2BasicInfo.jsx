@@ -60,7 +60,7 @@ export default function Step2BasicInfo({ formData, updateData, onNext, onPrev })
     if (!formData.business_type) return toast.error("Business Type is required");
     if (!formData.city) return toast.error("Primary City is required");
     
-    if (!otpVerified && process.env.NODE_ENV === 'production') {
+    if (!otpVerified && import.meta.env.PROD) {
        return toast.error("Please verify your mobile number first");
     }
 
