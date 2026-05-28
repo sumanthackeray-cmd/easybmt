@@ -269,10 +269,6 @@ export default function Settings() {
     }
   }, [existing]);
 
-  useEffect(() => {
-    console.log("Settings component state log:", { existing, form });
-  }, [existing, form]);
-
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const handleFileUpload = async (e, field, setUploading) => {
@@ -1041,9 +1037,9 @@ export default function Settings() {
 
       {/* Page Access Modal */}
       {isPageAccessModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-card border border-border/80 rounded-3xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden animate-fade-up">
-            <div className="p-6 border-b border-border/50 flex justify-between items-center bg-muted/30">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-2 sm:p-4">
+          <div className="bg-card border border-border/80 rounded-t-3xl sm:rounded-3xl shadow-2xl w-full max-w-2xl max-h-[92dvh] sm:max-h-[85vh] flex flex-col overflow-hidden animate-fade-up">
+            <div className="p-4 sm:p-6 border-b border-border/50 flex justify-between items-start sm:items-center gap-3 bg-muted/30">
               <div>
                 <h3 className="text-lg font-black tracking-tight flex items-center gap-2">
                   <Building2 className="w-5 h-5 text-purple-500" />
@@ -1060,7 +1056,7 @@ export default function Settings() {
                 ✕
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {PAGE_LIST.map((page) => {
                   const isChecked = (form.enabled_pages === null || form.enabled_pages === undefined || (Array.isArray(form.enabled_pages) && form.enabled_pages.length === 0)) ? true : form.enabled_pages.includes(page.key);
@@ -1087,16 +1083,16 @@ export default function Settings() {
                 })}
               </div>
             </div>
-            <div className="p-6 border-t border-border/50 flex justify-end gap-3 bg-muted/30">
+            <div className="p-4 sm:p-6 border-t border-border/50 flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 bg-muted/30 pb-[max(1rem,env(safe-area-inset-bottom))]">
               <Button 
                 variant="outline"
-                className="font-bold border-border"
+                className="font-bold border-border w-full sm:w-auto"
                 onClick={() => setIsPageAccessModalOpen(false)}
               >
                 Close
               </Button>
               <Button 
-                className="font-bold !bg-purple-600 hover:!bg-purple-700 !text-white shadow-lg shadow-purple-600/20"
+                className="font-bold !bg-purple-600 hover:!bg-purple-700 !text-white shadow-lg shadow-purple-600/20 w-full sm:w-auto"
                 onClick={() => {
                   setIsPageAccessModalOpen(false);
                   handleSave();
