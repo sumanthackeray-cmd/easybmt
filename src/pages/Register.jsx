@@ -25,6 +25,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { ownerLogin } from "@/modules/auth/authService";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import app from "@/api/firebase";
+import { clearAllLocalData } from "@/lib/localDB";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -172,6 +173,7 @@ export default function Register() {
     if (e) e.preventDefault();
     setError("");
     localStorage.clear();
+    await clearAllLocalData().catch(console.error);
 
     if (!fullName.trim()) return setError("Full Name is required.");
     if (!companyName.trim()) return setError("Business Name is required.");

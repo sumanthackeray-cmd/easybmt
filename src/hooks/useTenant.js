@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 
 import { registerTenant } from "@/firebase/functions";
+import { clearAllLocalData } from "@/lib/localDB";
 
 export function useTenant() {
   const [loading, setLoading] = useState(false);
@@ -27,12 +28,14 @@ export function useTenant() {
       localStorage.setItem("company_id", formatted);
       setCurrentTenantId(formatted);
       window.dispatchEvent(new CustomEvent("tenantChanged", { detail: formatted }));
+      clearAllLocalData().catch(console.error);
       // Optional: keep reload as a fallback to clear cache safely, but allow reactive updates first
       setTimeout(() => window.location.reload(), 100);
     } else {
       localStorage.removeItem("company_id");
       setCurrentTenantId(null);
       window.dispatchEvent(new CustomEvent("tenantChanged", { detail: null }));
+      clearAllLocalData().catch(console.error);
       setTimeout(() => window.location.reload(), 100);
     }
   };

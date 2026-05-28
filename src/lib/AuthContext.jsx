@@ -5,7 +5,7 @@ import { appParams } from '@/lib/app-params';
 import { auth, db } from '@/api/firebase';
 import { initTokenManager } from '@/firebase/tokenManager';
 import { debounce } from '@/lib/performance/debounce';
-import { initializeLocalArchitecture, stopSyncEngine } from '@/lib/localDB';
+import { initializeLocalArchitecture, stopSyncEngine, clearAllLocalData } from '@/lib/localDB';
 import { doc, getDoc, query, collection, where, getDocs, onSnapshot } from 'firebase/firestore';
 
 
@@ -186,6 +186,10 @@ export const AuthProvider = ({ children }) => {
           }
 
           if (resolvedCompanyId) {
+            const prevCompanyId = localStorage.getItem('company_id');
+            if (prevCompanyId && prevCompanyId !== resolvedCompanyId) {
+              await clearAllLocalData().catch(console.error);
+            }
             localStorage.setItem('company_id', resolvedCompanyId);
             setCompanyId(resolvedCompanyId);
             await initializeLocalArchitecture().catch(console.error);
@@ -703,6 +707,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('base44_access_token');
         localStorage.removeItem('base44_cached_user');
         localStorage.removeItem('company_id');
+        clearAllLocalData().catch(console.error);
       }
       
       setIsLoadingPublicSettings(false);
@@ -722,6 +727,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async (shouldRedirect = true) => {
     stopSyncEngine();
+    await clearAllLocalData().catch(console.error);
     await base44.auth.logout();
   };
 

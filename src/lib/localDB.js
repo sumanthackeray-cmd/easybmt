@@ -788,6 +788,8 @@ export async function syncCollection(collectionName) {
         await db[collectionName].put({
           id: fDoc.id,
           ...remoteData,
+          companyId: ctx.companyId,
+          branchId: remoteData.branchId || ctx.branchId || "main",
         });
       }
     });
@@ -1052,7 +1054,12 @@ export async function startRealtimeInventorySync() {
         if (docChange.type === 'added' || docChange.type === 'modified') {
           const existing = await db.inventory.get(docChange.doc.id);
           if (!existing || data.updated_date > (existing.updated_date || "")) {
-            await db.inventory.put({ id: docChange.doc.id, ...data });
+            await db.inventory.put({ 
+              id: docChange.doc.id, 
+              ...data,
+              companyId: ctx.companyId,
+              branchId: data.branchId || ctx.branchId || "main"
+            });
             changed = true;
           }
         } else if (docChange.type === 'removed') {
@@ -1088,6 +1095,28 @@ export function stopSyncEngine() {
   if (inventoryUnsubscribe) {
     inventoryUnsubscribe();
     inventoryUnsubscribe = null;
+  }
+}
+
+export async function clearAllLocalData() {
+  try {
+    stopSyncEngine();
+    
+    // Clear sync meta
+    await db.syncMeta.clear();
+    
+    // Clear all tables in parallel
+    const tables = db.tables;
+    await Promise.all(
+      tables.map(table => 
+        table.clear().catch(e => console.warn(`Error clearing table ${table.name}:`, e))
+      )
+    );
+    
+    // Broadcast complete to update other tabs
+    broadcastMutation("SYNC_COMPLETE", { collectionName: "all" });
+  } catch (err) {
+    console.error("Failed to clear local Dexie database:", err);
   }
 }
 

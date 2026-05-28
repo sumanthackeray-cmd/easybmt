@@ -7,6 +7,7 @@ import { setPersistence, browserLocalPersistence } from "firebase/auth";
 import { auth, db } from "@/firebase/config";
 import { query, collection, where, getDocs } from "firebase/firestore";
 import { base44 } from "@/api/base44Client";
+import { clearAllLocalData } from "@/lib/localDB";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -25,6 +26,7 @@ export default function Login() {
     setError("");
     setLoading(true);
     localStorage.clear();
+    await clearAllLocalData().catch(console.error);
     try {
       let resolvedIsStaff = isStaff;
       let resolvedEmail = email.trim();
@@ -75,6 +77,7 @@ export default function Login() {
     setError("");
     setLoading(true);
     localStorage.clear();
+    await clearAllLocalData().catch(console.error);
     try {
       await setPersistence(auth, browserLocalPersistence);
       const user = await base44.auth.loginWithProvider("google", null);

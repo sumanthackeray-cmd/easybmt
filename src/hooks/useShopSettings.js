@@ -2,11 +2,14 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import React, { useEffect } from "react";
 
-const LOCAL_STORAGE_KEY = "base44_shop_settings";
+const getLocalStorageKey = () => {
+  const companyId = localStorage.getItem("company_id") || "default";
+  return `base44_shop_settings_${companyId}`;
+};
 
 const getCachedSettings = () => {
   try {
-    const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
+    const cached = localStorage.getItem(getLocalStorageKey());
     return cached ? JSON.parse(cached) : [];
   } catch {
     return [];
@@ -34,7 +37,7 @@ export function useShopSettings() {
   useEffect(() => {
     if (settings && settings.length > 0) {
       try {
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(settings));
+        localStorage.setItem(getLocalStorageKey(), JSON.stringify(settings));
       } catch (err) {
         console.error("Failed to save settings to localStorage:", err);
       }
@@ -59,7 +62,7 @@ export function useShopSettings() {
 
     // Directly update local storage for instant state persistence across page loads
     try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedSettings));
+      localStorage.setItem(getLocalStorageKey(), JSON.stringify(updatedSettings));
     } catch (err) {
       console.error("Failed to save settings to localStorage:", err);
     }

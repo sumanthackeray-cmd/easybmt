@@ -9,9 +9,9 @@ import InvoiceForm from "@/components/invoices/InvoiceForm";
 import InvoicePrintPreview from "@/components/invoices/InvoicePrintPreview";
 import WhatsAppPanel from "@/components/invoices/WhatsAppPanel";
 import { toast } from "@/lib/toast";
-import { generateAndUploadInvoicePDF } from "@/lib/pdf-share-utils";
+import { generateAndUploadInvoicePDF, downloadInvoicePDF } from "@/lib/pdf-share-utils";
 import { getDocumentSequence } from "@/lib/sequence-utils";
-import { FileText, Eye, MessageCircle, Check, Plus, Search, ChevronDown, MoreVertical, Filter } from "lucide-react";
+import { FileText, Eye, MessageCircle, Check, Plus, Search, ChevronDown, MoreVertical, Filter, Download } from "lucide-react";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useAuth } from "@/lib/AuthContext";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -301,6 +301,18 @@ export default function Invoices() {
     }
   };
 
+  const handleDownload = async (inv) => {
+    const loadingToast = toast.loading(t("invoices.toast_pdf_generating"));
+    try {
+      await downloadInvoicePDF(inv, shopSettings, true);
+      toast.dismiss(loadingToast);
+      toast.success("PDF Downloaded successfully!");
+    } catch (err) {
+      toast.dismiss(loadingToast);
+      toast.error(t("invoices.toast_pdf_failed") + err.message);
+    }
+  };
+
   const filtered = invoices.filter(i => {
     const matchSearch = (i.invoice_number || "").toLowerCase().includes(search.toLowerCase()) ||
       (i.customer_name || "").toLowerCase().includes(search.toLowerCase()) ||
@@ -430,9 +442,9 @@ export default function Invoices() {
       <WhatsAppPanel invoices={invoices} shopSettings={shopSettings} />
 
       {/* Invoice List */}
-      <div className="space-y-3">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {filtered.length === 0 && (
-          <div className="text-center py-16 text-muted-foreground">
+          <div className="text-center py-16 text-muted-foreground col-span-full">
             <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
             <p>{t("invoices.no_invoices")}</p>
           </div>
@@ -441,7 +453,7 @@ export default function Invoices() {
           const ov = isOverdue(inv);
           const isNote = inv.type === "credit_note" || inv.type === "debit_note";
           return (
-            <div key={inv.id} className="bg-card border border-border rounded-xl p-4 hover:border-primary/20 transition-all">
+            <div key={inv.id} className="bg-card border border-border rounded-xl p-4 hover:border-primary/20 transition-all flex flex-col justify-between">
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -485,6 +497,9 @@ export default function Invoices() {
                 </Button>
                 <Button size="sm" variant="outline" className="gap-1.5" onClick={() => shareWhatsApp(inv)}>
                   <MessageCircle className="w-3 h-3" /> WhatsApp
+                </Button>
+                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => handleDownload(inv)}>
+                  <Download className="w-3 h-3" /> Download
                 </Button>
                 {inv.status !== "paid" && !isNote && inv.type !== "proforma" && inv.type !== "quotation" && (
                   <Button size="sm" variant="outline" className="gap-1.5 border-success/30 text-success hover:bg-success/10" onClick={() => markPaid(inv)}>
