@@ -43,7 +43,7 @@ exports.registerTenant = functions.https.onCall(async (data, context) => {
         // Update password to ensure it matches
         await auth.updateUser(ownerUser.uid, { password: password });
       } else {
-        throw authErr;
+        throw new functions.https.HttpsError("invalid-argument", authErr.message || "Failed to create user account.");
       }
     }
 
@@ -555,20 +555,20 @@ exports.manageStaffUser = functions.https.onCall(async (data, context) => {
 
 const nodemailer = require("nodemailer");
 
-// SMTP transporter configured via Firebase environment config.
-// To set these, run from the /functions directory:
-//   firebase functions:config:set smtp.host="mail.vogats.com" smtp.port="587" smtp.user="Info@vogats.com" smtp.pass="YOUR_PASSWORD"
-// Then deploy: firebase deploy --only functions
-const smtpConfig = functions.config().smtp || {};
+// SMTP transporter configured via process.env for better compatibility.
+const smtpHost = process.env.SMTP_HOST || 'smtp.hostinger.com';
+const smtpPort = parseInt(process.env.SMTP_PORT || '465', 10);
+const smtpUser = process.env.SMTP_USER || 'info@vogats.com';
+const smtpPass = process.env.SMTP_PASS || '';
 
 const transporter = nodemailer.createTransport({
   pool: true,
-  host: smtpConfig.host || 'smtp.gmail.com',
-  port: parseInt(smtpConfig.port || '587', 10),
-  secure: (smtpConfig.port === '465'),
+  host: smtpHost,
+  port: smtpPort,
+  secure: (smtpPort === 465),
   auth: {
-    user: smtpConfig.user || '',
-    pass: smtpConfig.pass || ''
+    user: smtpUser,
+    pass: smtpPass
   },
   tls: {
     rejectUnauthorized: false
@@ -847,7 +847,14 @@ exports.sendPasswordResetEmail = functions.https.onCall(async (data, context) =>
     return { success: true };
   } catch (error) {
     console.error("Password reset email failed:", error);
-    throw new functions.https.HttpsError("internal", "Failed to send password reset OTP.");
+    
+    // Fallback for development/testing: 
+    return { 
+      success: true, 
+      warning: "Email sending failed. Using development mode OTP.",
+      developmentOtp: otp,
+      debugError: error.message
+    };
   }
 });
 

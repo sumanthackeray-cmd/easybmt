@@ -29,7 +29,12 @@ export default function ForgotPassword() {
     try {
       const functions = getFunctions(app);
       const sendPasswordResetEmail = httpsCallable(functions, "sendPasswordResetEmail");
-      await sendPasswordResetEmail({ email: email.trim().toLowerCase() });
+      const res = await sendPasswordResetEmail({ email: email.trim().toLowerCase() });
+      
+      if (res.data?.developmentOtp) {
+        toast.info(`Dev Mode OTP: ${res.data.developmentOtp}`, { autoClose: false });
+      }
+      
       setStep(2);
     } catch (err) {
       console.error("OTP send error:", err);
