@@ -1,3 +1,4 @@
+// Force Vercel rebuild trigger: 2026-05-28
 // Prevent React DOM crashes from browser extensions / Google Translate
 if (typeof window !== 'undefined') {
   const nativeRemoveChild = Node.prototype.removeChild;
