@@ -106,12 +106,12 @@ export default function Login() {
   return (
     <div className="h-screen w-full flex bg-white dark:bg-[#0B0B0F] text-[#3A3A4A] dark:text-[#D1D1E0] font-sans selection:bg-[#E8721C] selection:text-white transition-colors duration-300 overflow-hidden">
       {/* LEFT PANEL - Branding (Hidden on mobile) */}
-      <div className="hidden lg:flex lg:w-[45%] flex-col justify-between p-12 relative overflow-hidden bg-[#F5F5F7] dark:bg-[#111118] border-r border-[#E8E8EE] dark:border-none transition-colors duration-300">
+      <div className="hidden lg:flex lg:w-[45%] flex-col justify-between pt-8 pb-10 px-12 relative overflow-hidden bg-[#F5F5F7] dark:bg-[#111118] border-r border-[#E8E8EE] dark:border-none transition-colors duration-300">
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#E8721C]/10 rounded-full blur-[120px] mix-blend-screen pointer-events-none translate-x-1/2 -translate-y-1/4"></div>
         <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-[#E8721C]/5 rounded-full blur-[150px] mix-blend-screen pointer-events-none -translate-x-1/3 translate-y-1/3"></div>
         
         <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-16">
+          <div className="flex items-center gap-3 mb-8">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#E8721C] to-[#D4641A] flex items-center justify-center shadow-lg shadow-[#E8721C]/20">
               <ShieldCheck className="w-6 h-6 text-white" />
             </div>
@@ -127,7 +127,7 @@ export default function Login() {
             </p>
           </div>
 
-          <div className="mt-14 grid grid-cols-2 gap-4">
+          <div className="mt-8 grid grid-cols-2 gap-4">
             <div className="bg-white dark:bg-white/5 border border-[#E8E8EE] dark:border-white/10 p-5 rounded-2xl dark:backdrop-blur-sm hover:bg-[#FAFAFA] dark:hover:bg-white/10 transition-colors shadow-sm dark:shadow-none">
               <h3 className="text-3xl font-black text-[#111118] dark:text-white transition-colors duration-300">50K<span className="text-[#E8721C]">+</span></h3>
               <p className="text-[#7A7A8C] dark:text-white/60 text-sm font-medium mt-1 transition-colors duration-300">Registered Businesses</p>
@@ -168,7 +168,7 @@ export default function Login() {
         <button
           type="button"
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          className="absolute top-4 right-4 sm:top-6 sm:right-6 lg:top-8 lg:right-8 p-2.5 rounded-xl bg-[#F5F5F7] dark:bg-[#1A1A28] border border-[#E8E8EE] dark:border-[#2A2A3A] hover:bg-[#E8E8EE] dark:hover:bg-[#2A2A3A] text-[#3A3A4A] dark:text-[#D1D1E0] transition-colors z-50 shadow-sm"
+          className="absolute top-4 right-4 sm:top-6 sm:right-6 lg:top-6 lg:right-6 p-2.5 rounded-xl bg-[#F5F5F7] dark:bg-[#1A1A28] border border-[#E8E8EE] dark:border-[#2A2A3A] hover:bg-[#E8E8EE] dark:hover:bg-[#2A2A3A] text-[#3A3A4A] dark:text-[#D1D1E0] transition-colors z-50 shadow-sm"
         >
           {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
         </button>
