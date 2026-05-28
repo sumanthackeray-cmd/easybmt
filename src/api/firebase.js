@@ -9,7 +9,7 @@ import {
 import { getStorage } from "firebase/storage";
 
 // Firebase web configuration (strictly environment variables only)
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyCC81u4VhjmLFYdww8xmcisUQ-4swqMXsQ",
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "vogats-firebase-studio.firebaseapp.com",
   databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL || "https://vogats-firebase-studio-default-rtdb.firebaseio.com",
