@@ -88,27 +88,9 @@ export default defineConfig({
         strictPort: false
     },
     build: {
-        target: 'esnext',
-        minify: 'terser',
+        target: 'es2020',
+        // Use esbuild minifier and default chunking for maximum runtime stability on Vercel.
+        minify: 'esbuild',
         cssMinify: true,
-        terserOptions: {
-            compress: {
-                drop_console: false, // DO NOT drop console to allow debugging
-                drop_debugger: true,
-                passes: 2
-            },
-            format: {
-                comments: false,
-            }
-        },
-        rollupOptions: {
-            output: {
-                manualChunks: {
-                    vendor: ['react', 'react-dom', 'react-router-dom'],
-                    firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage'],
-                    ui: ['lucide-react', 'framer-motion', 'recharts']
-                }
-            }
-        }
     }
 });
