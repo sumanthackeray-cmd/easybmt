@@ -2,7 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { registerSW } from 'virtual:pwa-register'
 import { Capacitor } from '@capacitor/core'
-import App from '@/App.jsx'
+import '@/index.css'
 
 // Define window.Capacitor.isNative globally to support legacy checks across the app using robust getter/setter interceptor
 if (typeof window !== 'undefined') {
@@ -34,14 +34,15 @@ if (typeof window !== 'undefined') {
     console.warn("Failed to define Capacitor global interceptor (property is likely read-only):", err);
   }
 }
-import '@/index.css'
-import { ThemeProvider } from "@/components/theme-provider"
-import { LanguageProvider } from "@/lib/LanguageContext"
-import { db } from '@/api/firebase'
-import { initializeBranchService } from '@/api/branchService'
-import { initializeInventorySyncService } from '@/api/inventorySyncService'
-import { initializeAuditLogging } from '@/api/auditLogging'
-import { errorLogger } from '@/lib/errorLogger'
+
+const fallbackLogger = {
+  captureError: (scope, error, extra = null) => {
+    console.error(`[${scope}]`, error, extra || '');
+  },
+  generateReport: () => 'Error report unavailable in fallback logger.',
+};
+
+let errorLogger = fallbackLogger;
 
 // ── Global error capture (connects to structured logger) ──────────────────
 if (typeof window !== 'undefined') {
@@ -80,17 +81,12 @@ if (typeof window !== 'undefined') {
   });
 }
 
-// ── Service initialisation ─────────────────────────────────────────────────
-try {
-  initializeBranchService(db);
-  initializeInventorySyncService(db);
-  initializeAuditLogging(db);
-} catch (e) {
-  errorLogger.captureError('ServiceInit', e);
-}
-
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
-  registerSW({ immediate: true });
+  try {
+    registerSW({ immediate: true });
+  } catch (e) {
+    errorLogger.captureError('ServiceWorkerRegister', e);
+  }
 }
 if (import.meta.env.DEV && 'serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then((regs) => {
@@ -158,9 +154,7 @@ class RootErrorBoundary extends React.Component {
   }
 }
 
-const mountNode = document.getElementById('root');
-
-const renderBootError = (error) => {
+const renderBootError = (error, mountNode) => {
   if (!mountNode) return;
   mountNode.innerHTML = `
     <div style="padding:24px;background:#0f0f1a;color:#ff4444;font-family:system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;">
@@ -172,9 +166,41 @@ const renderBootError = (error) => {
   `;
 };
 
-try {
+const bootstrap = async () => {
+  const mountNode = document.getElementById('root');
   if (!mountNode) {
     throw new Error('Root element #root not found');
+  }
+
+  // Lazy-load app modules so any import-time production failure is catchable.
+  const [
+    { default: App },
+    { ThemeProvider },
+    { LanguageProvider },
+    { db },
+    { initializeBranchService },
+    { initializeInventorySyncService },
+    { initializeAuditLogging },
+    loggerModule,
+  ] = await Promise.all([
+    import('@/App.jsx'),
+    import('@/components/theme-provider'),
+    import('@/lib/LanguageContext'),
+    import('@/api/firebase'),
+    import('@/api/branchService'),
+    import('@/api/inventorySyncService'),
+    import('@/api/auditLogging'),
+    import('@/lib/errorLogger'),
+  ]);
+
+  errorLogger = loggerModule?.errorLogger || fallbackLogger;
+
+  try {
+    initializeBranchService(db);
+    initializeInventorySyncService(db);
+    initializeAuditLogging(db);
+  } catch (e) {
+    errorLogger.captureError('ServiceInit', e);
   }
 
   ReactDOM.createRoot(mountNode).render(
@@ -186,8 +212,10 @@ try {
       </ThemeProvider>
     </RootErrorBoundary>
   );
-} catch (error) {
+};
+
+bootstrap().catch((error) => {
   errorLogger.captureError('Boot', error);
-  renderBootError(error);
-}
+  renderBootError(error, document.getElementById('root'));
+});
 
