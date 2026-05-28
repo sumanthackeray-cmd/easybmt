@@ -27,6 +27,8 @@ import { getFunctions, httpsCallable } from "firebase/functions";
 import app from "@/api/firebase";
 import { clearAllLocalData } from "@/lib/localDB";
 
+import siteLogo from "../../assets/site_logo.png";
+
 export default function Register() {
   const navigate = useNavigate();
   const { registerNewCompany, loading, error: tenantError } = useTenant();
@@ -276,10 +278,10 @@ export default function Register() {
         
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#E8721C] to-[#D4641A] flex items-center justify-center shadow-lg shadow-[#E8721C]/20">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#E8721C] to-[#D4641A] flex items-center justify-center shadow-lg shadow-[#E8721C]/20 shrink-0">
               <ShieldCheck className="w-6 h-6 text-white" />
             </div>
-            <span className="text-2xl font-black text-[#111118] dark:text-white tracking-tight transition-colors duration-300">EasyBMT</span>
+            <img src={siteLogo} alt="EasyBMT Logo" className="h-10 w-auto object-contain" />
           </div>
 
           <div className="space-y-6 max-w-md">
@@ -319,32 +321,24 @@ export default function Register() {
         </div>
 
         <div className="relative z-10 flex items-center justify-between text-[#7A7A8C] dark:text-white/50 text-sm font-medium transition-colors duration-300">
-          <p>© {new Date().getFullYear()} EasyBMT Inc.</p>
+          <p>© {new Date().getFullYear()} Easy Business Management Tool</p>
           <div className="flex gap-4">
-            <a href="#" className="hover:text-[#111118] dark:hover:text-white transition-colors">Privacy</a>
-            <a href="#" className="hover:text-[#111118] dark:hover:text-white transition-colors">Terms</a>
+            <a href="https://easybmt.com/privacy" className="hover:text-[#111118] dark:hover:text-white transition-colors">Privacy</a>
+            <a href="https://easybmt.com/terms" className="hover:text-[#111118] dark:hover:text-white transition-colors">Terms</a>
           </div>
         </div>
       </div>
 
       {/* RIGHT PANEL - Auth Form */}
       <div className="w-full lg:w-[55%] flex flex-col h-screen overflow-y-auto px-6 sm:px-12 md:px-24 relative bg-white dark:bg-[#14141F] transition-colors duration-300">
-        <button
-          type="button"
-          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          className="absolute top-4 right-4 sm:top-6 sm:right-6 lg:top-6 lg:right-6 p-2.5 rounded-xl bg-[#F5F5F7] dark:bg-[#1A1A28] border border-[#E8E8EE] dark:border-[#2A2A3A] hover:bg-[#E8E8EE] dark:hover:bg-[#2A2A3A] text-[#3A3A4A] dark:text-[#D1D1E0] transition-colors z-50 shadow-sm"
-        >
-          {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-        </button>
-
-        <div className="max-w-[440px] w-full mx-auto mt-6 mb-8 sm:my-auto py-4 sm:py-8 relative flex-shrink-0">
+        <div className="max-w-[440px] w-full mx-auto my-auto py-4 sm:py-8 relative flex-shrink-0">
           
           {/* Mobile Logo */}
           <div className="lg:hidden flex items-center gap-3 mb-6 mt-8 sm:mt-0">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#E8721C] to-[#D4641A] flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#E8721C] to-[#D4641A] flex items-center justify-center shrink-0">
               <ShieldCheck className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-black text-[#111118] dark:text-white tracking-tight transition-colors duration-300">EasyBMT</span>
+            <img src={siteLogo} alt="EasyBMT Logo" className="h-8 w-auto object-contain" />
           </div>
 
           <div className="mb-5">
@@ -366,15 +360,12 @@ export default function Register() {
               <div className="space-y-1.5">
                 <label className="text-sm font-bold text-[#3A3A4A] dark:text-[#D1D1E0] transition-colors duration-300">Full Name *</label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                    <User className="h-5 w-5 text-[#ADADBE] dark:text-[#5A5A6E] transition-colors duration-300" />
-                  </div>
                   <input
                     type="text"
                     required
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="w-full pl-11 pr-4 py-3 bg-[#FAFAFA] dark:bg-[#1A1A28] border border-[#DDDDE8] dark:border-[#2A2A3A] rounded-xl focus:ring-2 focus:ring-[#E8721C] focus:border-transparent outline-none transition-all text-[#111118] dark:text-white font-medium placeholder:text-[#ADADBE] dark:placeholder:text-[#5A5A6E]"
+                    className="w-full px-4 pr-4 py-3 bg-[#FAFAFA] dark:bg-[#1A1A28] border border-[#DDDDE8] dark:border-[#2A2A3A] rounded-xl focus:ring-2 focus:ring-[#E8721C] focus:border-transparent outline-none transition-all text-[#111118] dark:text-white font-medium placeholder:text-[#ADADBE] dark:placeholder:text-[#5A5A6E]"
                     placeholder="e.g. John Doe"
                   />
                 </div>
@@ -382,15 +373,12 @@ export default function Register() {
               <div className="space-y-1.5">
                 <label className="text-sm font-bold text-[#3A3A4A] dark:text-[#D1D1E0] transition-colors duration-300">Mobile Number *</label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                    <Phone className="h-5 w-5 text-[#ADADBE] dark:text-[#5A5A6E] transition-colors duration-300" />
-                  </div>
                   <input
                     type="tel"
                     required
                     value={mobile}
                     onChange={(e) => setMobile(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                    className="w-full pl-11 pr-4 py-3 bg-[#FAFAFA] dark:bg-[#1A1A28] border border-[#DDDDE8] dark:border-[#2A2A3A] rounded-xl focus:ring-2 focus:ring-[#E8721C] focus:border-transparent outline-none transition-all text-[#111118] dark:text-white font-medium placeholder:text-[#ADADBE] dark:placeholder:text-[#5A5A6E]"
+                    className="w-full px-4 pr-4 py-3 bg-[#FAFAFA] dark:bg-[#1A1A28] border border-[#DDDDE8] dark:border-[#2A2A3A] rounded-xl focus:ring-2 focus:ring-[#E8721C] focus:border-transparent outline-none transition-all text-[#111118] dark:text-white font-medium placeholder:text-[#ADADBE] dark:placeholder:text-[#5A5A6E]"
                     placeholder="10-digit number"
                     pattern="[0-9]{10}"
                     inputMode="tel"
@@ -403,15 +391,12 @@ export default function Register() {
             <div className={`space-y-1.5 ${otpSent ? 'opacity-50 pointer-events-none' : ''}`}>
               <label className="text-sm font-bold text-[#3A3A4A] dark:text-[#D1D1E0] transition-colors duration-300">Business Name *</label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                  <Building2 className="h-5 w-5 text-[#ADADBE] dark:text-[#5A5A6E] transition-colors duration-300" />
-                </div>
                 <input
                   type="text"
                   required
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 bg-[#FAFAFA] dark:bg-[#1A1A28] border border-[#DDDDE8] dark:border-[#2A2A3A] rounded-xl focus:ring-2 focus:ring-[#E8721C] focus:border-transparent outline-none transition-all text-[#111118] dark:text-white font-medium placeholder:text-[#ADADBE] dark:placeholder:text-[#5A5A6E]"
+                  className="w-full px-4 pr-4 py-3 bg-[#FAFAFA] dark:bg-[#1A1A28] border border-[#DDDDE8] dark:border-[#2A2A3A] rounded-xl focus:ring-2 focus:ring-[#E8721C] focus:border-transparent outline-none transition-all text-[#111118] dark:text-white font-medium placeholder:text-[#ADADBE] dark:placeholder:text-[#5A5A6E]"
                   placeholder="e.g. Acme Corporation"
                 />
               </div>
@@ -420,14 +405,11 @@ export default function Register() {
             <div className={`space-y-1.5 ${otpSent ? 'opacity-50 pointer-events-none' : ''}`}>
               <label className="text-sm font-bold text-[#3A3A4A] dark:text-[#D1D1E0] transition-colors duration-300">GSTIN <span className="text-[#ADADBE] font-normal">(Optional)</span></label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                  <Hash className="h-5 w-5 text-[#ADADBE] dark:text-[#5A5A6E] transition-colors duration-300" />
-                </div>
                 <input
                   type="text"
                   value={gstin}
                   onChange={(e) => setGstin(e.target.value.toUpperCase())}
-                  className="w-full pl-11 pr-4 py-3 bg-[#FAFAFA] dark:bg-[#1A1A28] border border-[#DDDDE8] dark:border-[#2A2A3A] rounded-xl focus:ring-2 focus:ring-[#E8721C] focus:border-transparent outline-none transition-all text-[#111118] dark:text-white font-medium placeholder:text-[#ADADBE] dark:placeholder:text-[#5A5A6E] uppercase"
+                  className="w-full px-4 pr-4 py-3 bg-[#FAFAFA] dark:bg-[#1A1A28] border border-[#DDDDE8] dark:border-[#2A2A3A] rounded-xl focus:ring-2 focus:ring-[#E8721C] focus:border-transparent outline-none transition-all text-[#111118] dark:text-white font-medium placeholder:text-[#ADADBE] dark:placeholder:text-[#5A5A6E] uppercase"
                   placeholder="27AAPCM1234F1Z5"
                 />
               </div>
@@ -437,15 +419,12 @@ export default function Register() {
             <div className={`space-y-1.5 ${otpSent ? 'opacity-50 pointer-events-none' : ''}`}>
               <label className="text-sm font-bold text-[#3A3A4A] dark:text-[#D1D1E0] transition-colors duration-300">Admin Email *</label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-[#ADADBE] dark:text-[#5A5A6E] transition-colors duration-300" />
-                </div>
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 bg-[#FAFAFA] dark:bg-[#1A1A28] border border-[#DDDDE8] dark:border-[#2A2A3A] rounded-xl focus:ring-2 focus:ring-[#E8721C] focus:border-transparent outline-none transition-all text-[#111118] dark:text-white font-medium placeholder:text-[#ADADBE] dark:placeholder:text-[#5A5A6E]"
+                  className="w-full px-4 pr-4 py-3 bg-[#FAFAFA] dark:bg-[#1A1A28] border border-[#DDDDE8] dark:border-[#2A2A3A] rounded-xl focus:ring-2 focus:ring-[#E8721C] focus:border-transparent outline-none transition-all text-[#111118] dark:text-white font-medium placeholder:text-[#ADADBE] dark:placeholder:text-[#5A5A6E]"
                   placeholder="admin@company.com"
                 />
               </div>
@@ -455,47 +434,45 @@ export default function Register() {
               <div className="space-y-1.5">
                 <label className="text-sm font-bold text-[#3A3A4A] dark:text-[#D1D1E0] transition-colors duration-300">Password *</label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                    <Lock className="h-5 w-5 text-[#ADADBE] dark:text-[#5A5A6E] transition-colors duration-300" />
-                  </div>
                   <input
                     type={showPassword ? "text" : "password"}
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-11 pr-10 py-3 bg-[#FAFAFA] dark:bg-[#1A1A28] border border-[#DDDDE8] dark:border-[#2A2A3A] rounded-xl focus:ring-2 focus:ring-[#E8721C] focus:border-transparent outline-none transition-all text-[#111118] dark:text-white font-medium placeholder:text-[#ADADBE] dark:placeholder:text-[#5A5A6E]"
+                    className="w-full pl-4 pr-10 py-3 bg-[#FAFAFA] dark:bg-[#1A1A28] border border-[#DDDDE8] dark:border-[#2A2A3A] rounded-xl focus:ring-2 focus:ring-[#E8721C] focus:border-transparent outline-none transition-all text-[#111118] dark:text-white font-medium placeholder:text-[#ADADBE] dark:placeholder:text-[#5A5A6E]"
                     placeholder="••••••••"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#ADADBE] hover:text-[#7A7A8C] transition-colors"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+                  {password.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#ADADBE] hover:text-[#7A7A8C] transition-colors"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  )}
                 </div>
               </div>
               <div className="space-y-1.5">
                 <label className="text-sm font-bold text-[#3A3A4A] dark:text-[#D1D1E0] transition-colors duration-300">Confirm *</label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                    <Check className="h-5 w-5 text-[#ADADBE] dark:text-[#5A5A6E] transition-colors duration-300" />
-                  </div>
                   <input
                     type={showConfirmPassword ? "text" : "password"}
                     required
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className={`w-full pl-11 pr-10 py-3 bg-[#FAFAFA] dark:bg-[#1A1A28] border rounded-xl focus:ring-2 focus:ring-[#E8721C] focus:border-transparent outline-none transition-all text-[#111118] dark:text-white font-medium placeholder:text-[#ADADBE] dark:placeholder:text-[#5A5A6E] ${confirmPassword && password !== confirmPassword ? 'border-[#EF4444] focus:ring-[#EF4444]' : 'border-[#DDDDE8] dark:border-[#2A2A3A]'}`}
+                    className={`w-full pl-4 pr-10 py-3 bg-[#FAFAFA] dark:bg-[#1A1A28] border rounded-xl focus:ring-2 focus:ring-[#E8721C] focus:border-transparent outline-none transition-all text-[#111118] dark:text-white font-medium placeholder:text-[#ADADBE] dark:placeholder:text-[#5A5A6E] ${confirmPassword && password !== confirmPassword ? 'border-[#EF4444] focus:ring-[#EF4444]' : 'border-[#DDDDE8] dark:border-[#2A2A3A]'}`}
                     placeholder="••••••••"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#ADADBE] hover:text-[#7A7A8C] transition-colors"
-                  >
-                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+                  {confirmPassword.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#ADADBE] hover:text-[#7A7A8C] transition-colors"
+                    >
+                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

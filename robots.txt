@@ -1,0 +1,26 @@
+# Global Robots.txt for EasyBMT - All in One Business Management Tool
+User-agent: *
+Allow: /
+Allow: /assets/
+Allow: /blog/
+Allow: /features/
+Allow: /industries/
+Allow: /pricing
+
+# Disallow authenticated application panels and dynamic routes to conserve crawl budget
+Disallow: /dashboard/
+Disallow: /settings
+Disallow: /accounting
+Disallow: /inventory
+Disallow: /customers
+Disallow: /invoices
+Disallow: /expenses
+Disallow: /warehouse
+Disallow: /hrms
+Disallow: /unauthorized
+Disallow: /api/
+Disallow: /_*
+
+# Sitemap XML Reference
+Sitemap: https://easybmt.com/sitemap.xml
+Sitemap: https://easybmt.com/sitemap-images.xml

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+    <!-- Main Home Page Assets -->
+    <url>
+        <loc>https://easybmt.com/</loc>
+        <image:image>
+            <image:loc>https://easybmt.com/assets/logo.png</image:loc>
+            <image:title>EasyBMT - All in One Business Management Tool Logo</image:title>
+            <image:caption>EasyBMT orange theme main brand icon logo for smart GST billing and ERP business management</image:caption>
+        </image:image>
+        <image:image>
+            <image:loc>https://easybmt.com/assets/icon.png</image:loc>
+            <image:title>EasyBMT Smart App Icon</image:title>
+            <image:caption>EasyBMT application branding icon used for desktop, Android, and web POS applications</image:caption>
+        </image:image>
+    </url>
+    <!-- Core Authentication Assets -->
+    <url>
+        <loc>https://easybmt.com/login</loc>
+        <image:image>
+            <image:loc>https://easybmt.com/assets/site_logo.png</image:loc>
+            <image:title>EasyBMT Horizontal Text Logo</image:title>
+            <image:caption>EasyBMT horizontal orange-colored typography logo displayed on the authentication gateway screen</image:caption>
+        </image:image>
+    </url>
+</urlset>

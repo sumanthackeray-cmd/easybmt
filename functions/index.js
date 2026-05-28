@@ -595,7 +595,7 @@ async function sendWelcomeEmailInternal(email, companyName, companyId) {
         </div>
         <p style="color: #555; font-size: 13px; line-height: 1.6;">⚠️ Keep this ID confidential. Anyone with your Company ID and credentials can access your workspace.</p>
         <hr style="border: none; border-top: 1px solid #E8E8EE; margin: 28px 0;">
-        <p style="color: #9A9AAE; font-size: 12px; text-align: center;">© ${new Date().getFullYear()} EasyBMT Inc. &nbsp;|&nbsp; <a href="#" style="color: #E8721C; text-decoration: none;">Privacy Policy</a></p>
+        <p style="color: #9A9AAE; font-size: 12px; text-align: center;">© ${new Date().getFullYear()} Easy Business Management Tool &nbsp;|&nbsp; <a href="#" style="color: #E8721C; text-decoration: none;">Privacy Policy</a></p>
       </div>
     `
   };

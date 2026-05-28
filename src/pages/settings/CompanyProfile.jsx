@@ -7,6 +7,7 @@ import { ChevronDown, ChevronUp, Save, Building2, Copy, CheckCircle } from 'luci
 import SkippableField from '../../modules/registration/SkippableField';
 import { useShopSettings } from '../../hooks/useShopSettings';
 import { base44 } from '../../api/base44Client';
+import AccountDeletionTab from './AccountDeletionTab';
 
 const ExpandableSection = ({ title, children, defaultOpen = false }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -267,6 +268,12 @@ export default function CompanyProfile() {
             <SkippableField label="No. of Warehouses" field="no_of_warehouses" type="number" value={formData.wholesale?.no_of_warehouses} onChange={(f, v) => handleGroupChange('wholesale', f, v)} />
           </div>
         </ExpandableSection>
+      )}
+
+      {(user?.role === 'admin' || user?.role_id === 'role-admin' || user?.hierarchy_level <= 3 || user?.user_code?.includes('ADMIN')) && (
+        <div className="mt-8">
+          <AccountDeletionTab />
+        </div>
       )}
     </form>
   );

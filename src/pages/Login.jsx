@@ -5,9 +5,11 @@ import { Mail, Lock, Building2, User, Loader2, ShieldAlert, ArrowRight, Eye, Eye
 import { staffLogin, ownerLogin, prePopulateLoginCache } from "@/modules/auth/authService";
 import { setPersistence, browserLocalPersistence } from "firebase/auth";
 import { auth, db } from "@/firebase/config";
-import { query, collection, where, getDocs } from "firebase/firestore";
+import { query, collection, where, getDocs, doc, getDoc } from "firebase/firestore";
 import { base44 } from "@/api/base44Client";
 import { clearAllLocalData } from "@/lib/localDB";
+
+import siteLogo from "../../assets/site_logo.png";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -48,10 +50,26 @@ export default function Login() {
         }
         await staffLogin(resolvedCompanyId, resolvedUserCode, password);
       } else {
-        if (!resolvedEmail || !password) {
-          throw new Error("Please enter your registered Email and Password.");
+        if (!resolvedEmail) {
+          throw new Error("Please enter your registered Email or Company ID.");
         }
-        await ownerLogin(resolvedEmail, password);
+        if (!password) {
+          throw new Error("Please enter your Password.");
+        }
+
+        let finalAdminEmail = resolvedEmail;
+        // If it's not an email, treat it as a Company ID and resolve the email
+        if (!finalAdminEmail.includes("@")) {
+          const docRef = doc(db, "companies", finalAdminEmail);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists() && docSnap.data().admin_email) {
+            finalAdminEmail = docSnap.data().admin_email;
+          } else {
+            throw new Error("Invalid Company ID or Admin email not found.");
+          }
+        }
+
+        await ownerLogin(finalAdminEmail, password);
       }
       navigate("/", { replace: true });
     } catch (err) {
@@ -115,10 +133,10 @@ export default function Login() {
         
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#E8721C] to-[#D4641A] flex items-center justify-center shadow-lg shadow-[#E8721C]/20">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#E8721C] to-[#D4641A] flex items-center justify-center shadow-lg shadow-[#E8721C]/20 shrink-0">
               <ShieldCheck className="w-6 h-6 text-white" />
             </div>
-            <span className="text-2xl font-black text-[#111118] dark:text-white tracking-tight transition-colors duration-300">EasyBMT</span>
+            <img src={siteLogo} alt="EasyBMT Logo" className="h-10 w-auto object-contain" />
           </div>
 
           <div className="space-y-6 max-w-md">
@@ -158,32 +176,24 @@ export default function Login() {
         </div>
 
         <div className="relative z-10 flex items-center justify-between text-[#7A7A8C] dark:text-white/50 text-sm font-medium transition-colors duration-300">
-          <p>© {new Date().getFullYear()} EasyBMT Inc.</p>
+          <p>© {new Date().getFullYear()} Easy Business Management Tool</p>
           <div className="flex gap-4">
-            <a href="#" className="hover:text-[#111118] dark:hover:text-white transition-colors">Privacy</a>
-            <a href="#" className="hover:text-[#111118] dark:hover:text-white transition-colors">Terms</a>
+            <a href="https://easybmt.com/privacy" className="hover:text-[#111118] dark:hover:text-white transition-colors">Privacy</a>
+            <a href="https://easybmt.com/terms" className="hover:text-[#111118] dark:hover:text-white transition-colors">Terms</a>
           </div>
         </div>
       </div>
 
       {/* RIGHT PANEL - Auth Form */}
       <div className="w-full lg:w-[55%] flex flex-col h-screen overflow-y-auto px-6 sm:px-12 md:px-24 relative bg-white dark:bg-[#14141F] transition-colors duration-300">
-        <button
-          type="button"
-          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          className="absolute top-4 right-4 sm:top-6 sm:right-6 lg:top-6 lg:right-6 p-2.5 rounded-xl bg-[#F5F5F7] dark:bg-[#1A1A28] border border-[#E8E8EE] dark:border-[#2A2A3A] hover:bg-[#E8E8EE] dark:hover:bg-[#2A2A3A] text-[#3A3A4A] dark:text-[#D1D1E0] transition-colors z-50 shadow-sm"
-        >
-          {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-        </button>
-
-        <div className="max-w-[440px] w-full mx-auto mt-6 mb-8 sm:my-auto py-4 sm:py-8 relative flex-shrink-0">
+        <div className="max-w-[440px] w-full mx-auto my-auto py-4 sm:py-8 relative flex-shrink-0">
           
           {/* Mobile Logo */}
           <div className="lg:hidden flex items-center gap-3 mb-6 mt-8 sm:mt-0">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#E8721C] to-[#D4641A] flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#E8721C] to-[#D4641A] flex items-center justify-center shrink-0">
               <ShieldCheck className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-black text-[#111118] dark:text-white tracking-tight transition-colors duration-300">EasyBMT</span>
+            <img src={siteLogo} alt="EasyBMT Logo" className="h-8 w-auto object-contain" />
           </div>
 
           <div className="mb-5">
@@ -229,15 +239,12 @@ export default function Login() {
                 <div className="space-y-1.5">
                   <label className="text-sm font-bold text-[#3A3A4A] dark:text-[#D1D1E0] transition-colors duration-300">Company ID</label>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                      <Building2 className="h-5 w-5 text-[#ADADBE] dark:text-[#5A5A6E] transition-colors duration-300" />
-                    </div>
                     <input
                       type="text"
                       required
                       value={companyId}
                       onChange={(e) => setCompanyId(e.target.value)}
-                      className="w-full pl-11 pr-4 py-3 bg-[#FAFAFA] dark:bg-[#1A1A28] border border-[#DDDDE8] dark:border-[#2A2A3A] rounded-xl focus:ring-2 focus:ring-[#E8721C] focus:border-transparent outline-none transition-all text-[#111118] dark:text-white font-medium placeholder:text-[#ADADBE] dark:placeholder:text-[#5A5A6E]"
+                      className="w-full px-4 py-3 bg-[#FAFAFA] dark:bg-[#1A1A28] border border-[#DDDDE8] dark:border-[#2A2A3A] rounded-xl focus:ring-2 focus:ring-[#E8721C] focus:border-transparent outline-none transition-all text-[#111118] dark:text-white font-medium placeholder:text-[#ADADBE] dark:placeholder:text-[#5A5A6E]"
                       placeholder="e.g. COMP-1234"
                     />
                   </div>
@@ -245,15 +252,12 @@ export default function Login() {
                 <div className="space-y-1.5">
                   <label className="text-sm font-bold text-[#3A3A4A] dark:text-[#D1D1E0] transition-colors duration-300">User Code</label>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                      <User className="h-5 w-5 text-[#ADADBE] dark:text-[#5A5A6E] transition-colors duration-300" />
-                    </div>
                     <input
                       type="text"
                       required
                       value={userCode}
                       onChange={(e) => setUserCode(e.target.value)}
-                      className="w-full pl-11 pr-4 py-3 bg-[#FAFAFA] dark:bg-[#1A1A28] border border-[#DDDDE8] dark:border-[#2A2A3A] rounded-xl focus:ring-2 focus:ring-[#E8721C] focus:border-transparent outline-none transition-all text-[#111118] dark:text-white font-medium placeholder:text-[#ADADBE] dark:placeholder:text-[#5A5A6E]"
+                      className="w-full px-4 py-3 bg-[#FAFAFA] dark:bg-[#1A1A28] border border-[#DDDDE8] dark:border-[#2A2A3A] rounded-xl focus:ring-2 focus:ring-[#E8721C] focus:border-transparent outline-none transition-all text-[#111118] dark:text-white font-medium placeholder:text-[#ADADBE] dark:placeholder:text-[#5A5A6E]"
                       placeholder="e.g. STAFF-001"
                     />
                   </div>
@@ -263,15 +267,12 @@ export default function Login() {
               <div className="space-y-1.5">
                 <label className="text-sm font-bold text-[#3A3A4A] dark:text-[#D1D1E0] transition-colors duration-300">Email Address or Company ID</label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                    <Mail className="h-5 w-5 text-[#ADADBE] dark:text-[#5A5A6E] transition-colors duration-300" />
-                  </div>
                   <input
                     type="text"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-11 pr-4 py-3 bg-[#FAFAFA] dark:bg-[#1A1A28] border border-[#DDDDE8] dark:border-[#2A2A3A] rounded-xl focus:ring-2 focus:ring-[#E8721C] focus:border-transparent outline-none transition-all text-[#111118] dark:text-white font-medium placeholder:text-[#ADADBE] dark:placeholder:text-[#5A5A6E]"
+                    className="w-full px-4 py-3 bg-[#FAFAFA] dark:bg-[#1A1A28] border border-[#DDDDE8] dark:border-[#2A2A3A] rounded-xl focus:ring-2 focus:ring-[#E8721C] focus:border-transparent outline-none transition-all text-[#111118] dark:text-white font-medium placeholder:text-[#ADADBE] dark:placeholder:text-[#5A5A6E]"
                     placeholder="admin@company.com or COMP-1234"
                   />
                 </div>
@@ -288,24 +289,23 @@ export default function Login() {
                 )}
               </div>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-[#ADADBE] dark:text-[#5A5A6E] transition-colors duration-300" />
-                </div>
                 <input
                   type={showPassword ? "text" : "password"}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-11 pr-12 py-3 bg-[#FAFAFA] dark:bg-[#1A1A28] border border-[#DDDDE8] dark:border-[#2A2A3A] rounded-xl focus:ring-2 focus:ring-[#E8721C] focus:border-transparent outline-none transition-all text-[#111118] dark:text-white font-medium placeholder:text-[#ADADBE] dark:placeholder:text-[#5A5A6E]"
+                  className="w-full pl-4 pr-12 py-3 bg-[#FAFAFA] dark:bg-[#1A1A28] border border-[#DDDDE8] dark:border-[#2A2A3A] rounded-xl focus:ring-2 focus:ring-[#E8721C] focus:border-transparent outline-none transition-all text-[#111118] dark:text-white font-medium placeholder:text-[#ADADBE] dark:placeholder:text-[#5A5A6E]"
                   placeholder="••••••••"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#ADADBE] hover:text-[#7A7A8C] dark:text-[#5A5A6E] dark:hover:text-[#8A8A9E] transition-colors"
-                >
-                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                </button>
+                {password.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#ADADBE] hover:text-[#7A7A8C] dark:text-[#5A5A6E] dark:hover:text-[#8A8A9E] transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
+                )}
               </div>
             </div>
 

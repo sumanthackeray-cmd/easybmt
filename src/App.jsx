@@ -29,6 +29,8 @@ import ResetPassword from "./pages/ResetPassword";
 import Unauthorized from "./pages/Unauthorized";
 import AppLayout from "@/components/layout/AppLayout";
 import OnboardingWizard from "@/modules/registration/OnboardingWizard";
+import PrivacyPolicy from "@/pages/PrivacyPolicy";
+import TermsConditions from "@/pages/TermsConditions";
 
 // Lazy Loaded Routes (Code Split for sub-100ms loading)
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
@@ -112,6 +114,8 @@ const AuthenticatedApp = () => {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
         <Route path="/onboarding" element={<OnboardingWizard />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/terms" element={<TermsConditions />} />
 
         <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
           <Route path="/pos" element={<PageRouteGuard pageKey="pos"><POS /></PageRouteGuard>} />
