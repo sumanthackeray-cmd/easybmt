@@ -431,7 +431,7 @@ export default function InternalStaffChat() {
             
             {/* ─── WhatsApp-Style Header ─── */}
             <div className={cn(
-              "px-4 py-3 bg-[#008069] dark:bg-[#202c33] text-white flex items-center justify-between shrink-0 shadow-md",
+              "px-4 pb-3 pt-[calc(var(--safe-top,12px)+12px)] lg:pt-3 bg-[#008069] dark:bg-[#202c33] text-white flex items-center justify-between shrink-0 shadow-md",
               activeUser ? "gap-2" : "gap-4"
             )}>
               {activeUser ? (

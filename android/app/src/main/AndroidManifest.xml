@@ -29,53 +29,36 @@
         </provider>
     </application>
 
-    <!-- ========================= -->
-    <!-- EasyBMT Billing App Permissions -->
-    <!-- ========================= -->
+    <!-- Permissions -->
 
-    <!-- Internet & Network -->
-    <uses-permission android:name="android.permission.INTERNET"/>
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
-    <!-- Camera - Barcode / QR Scanner -->
-    <uses-permission android:name="android.permission.CAMERA"/>
+    <!-- Microphone -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
-    <!-- Microphone - Voice Search / Voice Input -->
-    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <!-- Contacts -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
 
-    <!-- Contacts - Customer Import -->
-    <uses-permission android:name="android.permission.READ_CONTACTS"/>
-    <uses-permission android:name="android.permission.WRITE_CONTACTS"/>
+    <!-- Notifications (Android 13+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <!-- Location - Bluetooth Discovery / Delivery Tracking -->
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <!-- Files & Media (Android 13+) -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
 
-    <!-- Notifications - Payment Reminders / Order Alerts -->
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Files & Media (Legacy Android 12 and below) -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 
-    <!-- Bluetooth Printer - Old Android -->
-    <uses-permission android:name="android.permission.BLUETOOTH"/>
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>
-
-    <!-- Bluetooth Printer - Android 12+ -->
-    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
-    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"/>
-
-    <!-- Nearby Devices -->
-    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES"/>
-
-    <!-- Storage - Invoice PDF Save/Share -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29"/>
-
-    <!-- Android 13+ Image Access -->
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
-
-    <!-- Wake Lock - Background Billing Service -->
-    <uses-permission android:name="android.permission.WAKE_LOCK"/>
-
-    <!-- Foreground Service - Continuous Billing / Sync -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-
+    <!-- Optional Hardware Features -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
 </manifest>

@@ -24,20 +24,15 @@ allprojects {
     }
 }
 
-// Force Java 17 on ALL modules (fixes Capacitor plugins compiled with Java 21)
 subprojects {
     afterEvaluate { project ->
         if (project.hasProperty('android')) {
             project.android {
                 compileOptions {
-                    sourceCompatibility JavaVersion.VERSION_17
-                    targetCompatibility JavaVersion.VERSION_17
+                    sourceCompatibility = JavaVersion.VERSION_17
+                    targetCompatibility = JavaVersion.VERSION_17
                 }
             }
-        }
-        project.tasks.withType(JavaCompile).configureEach {
-            sourceCompatibility = JavaVersion.VERSION_17
-            targetCompatibility = JavaVersion.VERSION_17
         }
     }
 }
@@ -45,3 +40,4 @@ subprojects {
 task clean(type: Delete) {
     delete rootProject.buildDir
 }
+

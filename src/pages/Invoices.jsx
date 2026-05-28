@@ -201,7 +201,7 @@ export default function Invoices() {
           throw new Error("Failed to generate a unique invoice number after multiple attempts.");
         }
         
-        if (shopSettings.id && !shopSettings.id.startsWith("seed") && seqKeyToUpdate) {
+        if (shopSettings.id && seqKeyToUpdate) {
           await base44.entities.ShopSettings.update(shopSettings.id, { [seqKeyToUpdate]: currentCounter });
         }
 

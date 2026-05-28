@@ -224,11 +224,40 @@ export async function sendEscPosToPrinter(commands, settings, onProgress) {
     throw new Error("Use System Print mode via printReceipt() for cross-browser thermal printing.");
   }
 
+  const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);
+  const isCapacitorNative = typeof window !== 'undefined' && !!window.Capacitor?.isNative;
+
+  // ── DIRECT CAPACITOR NATIVE ANDROID BLUETOOTH PRINTER ────────────────────
+  if (isCapacitorNative && (printerType === "bluetooth" || printerType === "rawbt")) {
+    const macAddress = settings.paired_printer_address;
+    if (macAddress && macAddress.trim()) {
+      if (onProgress) onProgress("Connecting to direct Bluetooth printer...");
+      try {
+        const data = commands instanceof Uint8Array ? commands : new Uint8Array(commands);
+        let binary = "";
+        for (let i = 0; i < data.length; i++) {
+          binary += String.fromCharCode(data[i]);
+        }
+        const base64Data = btoa(binary);
+
+        const { Capacitor } = window;
+        await Capacitor.Plugins.BluetoothPrinter.printRawData({
+          address: macAddress,
+          data: base64Data
+        });
+
+        if (onProgress) onProgress("Print completed successfully!");
+        return true;
+      } catch (err) {
+        console.error("Direct native Bluetooth print failed, falling back...", err);
+        if (onProgress) onProgress("Direct connection failed. Falling back to Intent/BLE...");
+      }
+    }
+  }
+
   // Force route Bluetooth to RawBT if inside Capacitor Android Native App
   // because Web Bluetooth API is disabled in Android WebViews by default.
   if (printerType === "bluetooth") {
-    const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);
-    const isCapacitorNative = typeof window !== 'undefined' && !!window.Capacitor?.isNative;
     if (isAndroid && isCapacitorNative) {
       printerType = "rawbt";
     }

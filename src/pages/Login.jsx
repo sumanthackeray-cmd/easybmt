@@ -174,22 +174,22 @@ export default function Login() {
           {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
         </button>
 
-        <div className="max-w-[440px] w-full mx-auto my-auto py-12 relative flex-shrink-0">
+        <div className="max-w-[440px] w-full mx-auto mt-6 mb-8 sm:my-auto py-4 sm:py-8 relative flex-shrink-0">
           
           {/* Mobile Logo */}
-          <div className="lg:hidden flex items-center gap-3 mb-10 mt-6">
+          <div className="lg:hidden flex items-center gap-3 mb-6 mt-8 sm:mt-0">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#E8721C] to-[#D4641A] flex items-center justify-center">
               <ShieldCheck className="w-5 h-5 text-white" />
             </div>
             <span className="text-xl font-black text-[#111118] dark:text-white tracking-tight transition-colors duration-300">EasyBMT</span>
           </div>
 
-          <div className="mb-8 mt-6">
-            <h2 className="text-3xl font-black text-[#111118] dark:text-white tracking-tight mb-2 transition-colors duration-300">Welcome back</h2>
-            <p className="text-[#7A7A8C] dark:text-[#8A8A9E] font-medium transition-colors duration-300">Please enter your details to sign in.</p>
+          <div className="mb-5">
+            <h2 className="text-2xl sm:text-3xl font-black text-[#111118] dark:text-white tracking-tight mb-1.5 transition-colors duration-300">Welcome back</h2>
+            <p className="text-sm sm:text-[15px] text-[#7A7A8C] dark:text-[#8A8A9E] font-medium transition-colors duration-300">Please enter your details to sign in.</p>
           </div>
 
-          <p className="text-center text-[15px] text-[#3A3A4A] dark:text-[#D1D1E0] font-bold mb-4 transition-colors duration-300">
+          <p className="text-left sm:text-center text-[13px] sm:text-sm text-[#3A3A4A] dark:text-[#D1D1E0] font-bold mb-5 transition-colors duration-300">
             Don't have an account?{' '}
             <Link to="/register" className="text-[#E8721C] font-bold hover:text-[#D4641A] transition-colors">
               Create workspace
@@ -197,31 +197,31 @@ export default function Login() {
           </p>
 
           {/* Role Toggle */}
-          <div className="flex p-1 bg-[#F0F0F6] dark:bg-[#1A1A28] rounded-xl mb-8 border border-[#E8E8EE] dark:border-[#2A2A3A] transition-colors duration-300">
+          <div className="flex p-1 bg-[#F0F0F6] dark:bg-[#1A1A28] rounded-xl mb-5 border border-[#E8E8EE] dark:border-[#2A2A3A] transition-colors duration-300">
             <button
               type="button"
               onClick={() => setIsStaff(false)}
-              className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all duration-200 flex items-center justify-center gap-2 ${!isStaff ? 'bg-white dark:bg-[#2A2A3A] text-[#111118] dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/10' : 'text-[#7A7A8C] dark:text-[#8A8A9E] hover:text-[#111118] dark:hover:text-white'}`}
+              className={`flex-1 py-2 sm:py-2.5 text-xs sm:text-sm font-bold rounded-lg transition-all duration-200 flex items-center justify-center gap-2 ${!isStaff ? 'bg-white dark:bg-[#2A2A3A] text-[#111118] dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/10' : 'text-[#7A7A8C] dark:text-[#8A8A9E] hover:text-[#111118] dark:hover:text-white'}`}
             >
               <Building2 className="w-4 h-4" /> Administrator
             </button>
             <button
               type="button"
               onClick={() => setIsStaff(true)}
-              className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all duration-200 flex items-center justify-center gap-2 ${isStaff ? 'bg-white dark:bg-[#2A2A3A] text-[#111118] dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/10' : 'text-[#7A7A8C] dark:text-[#8A8A9E] hover:text-[#111118] dark:hover:text-white'}`}
+              className={`flex-1 py-2 sm:py-2.5 text-xs sm:text-sm font-bold rounded-lg transition-all duration-200 flex items-center justify-center gap-2 ${isStaff ? 'bg-white dark:bg-[#2A2A3A] text-[#111118] dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/10' : 'text-[#7A7A8C] dark:text-[#8A8A9E] hover:text-[#111118] dark:hover:text-white'}`}
             >
               <User className="w-4 h-4" /> Staff Member
             </button>
           </div>
 
           {error && (
-            <div className="mb-6 p-4 rounded-xl bg-[#FEF2F2] dark:bg-[#3A1313] border border-[#EF4444]/20 flex gap-3 animate-in fade-in slide-in-from-top-2">
+            <div className="mb-5 p-3 sm:p-4 rounded-xl bg-[#FEF2F2] dark:bg-[#3A1313] border border-[#EF4444]/20 flex gap-3 animate-in fade-in slide-in-from-top-2">
               <ShieldAlert className="w-5 h-5 text-[#EF4444] shrink-0" />
-              <p className="text-sm font-medium text-[#EF4444]">{error}</p>
+              <p className="text-[13px] sm:text-sm font-medium text-[#EF4444]">{error}</p>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {isStaff ? (
               <>
                 <div className="space-y-1.5">

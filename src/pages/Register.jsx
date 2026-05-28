@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useTheme } from "next-themes";
 import { Link, useNavigate } from "react-router-dom";
 import { 
@@ -15,7 +15,10 @@ import {
   CheckCircle2,
   Check,
   Moon,
-  Sun
+  Sun,
+  User,
+  Phone,
+  RefreshCw
 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { useTenant } from "@/hooks/useTenant";
@@ -27,6 +30,8 @@ export default function Register() {
   const navigate = useNavigate();
   const { registerNewCompany, loading, error: tenantError } = useTenant();
   
+  const [fullName, setFullName] = useState("");
+  const [mobile, setMobile] = useState("");
   const [companyName, setCompanyName] = useState("");
   const [gstin, setGstin] = useState("");
   const [email, setEmail] = useState("");
@@ -37,12 +42,30 @@ export default function Register() {
   
   // OTP flow states
   const [otpSent, setOtpSent] = useState(false);
-  const [otp, setOtp] = useState("");
+  const [otpValues, setOtpValues] = useState(["", "", "", "", "", ""]);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [resendTimer, setResendTimer] = useState(60);
+  const [isResending, setIsResending] = useState(false);
+  const [devOtpCode, setDevOtpCode] = useState("");
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
   const { theme, setTheme } = useTheme();
+
+  const otpInputsRef = useRef([]);
+
+  // Countdown timer effect
+  useEffect(() => {
+    let interval = null;
+    if (otpSent && resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer((prev) => prev - 1);
+      }, 1000);
+    } else {
+      clearInterval(interval);
+    }
+    return () => clearInterval(interval);
+  }, [otpSent, resendTimer]);
 
   const validateGstin = (value) => {
     if (!value) return true;
@@ -69,17 +92,92 @@ export default function Register() {
     const msg = error?.message || String(error);
     if (msg.includes("internal")) return "An unexpected error occurred. Please try again or contact support.";
     if (msg.includes("unavailable")) return "Service is temporarily unavailable. Please try again later.";
-    if (msg.includes("already-in-use")) return "This email is already registered. Please sign in.";
+    if (msg.includes("already-exists") || msg.includes("already-in-use")) return "This email is already registered. Please sign in.";
     if (msg.includes("network-request-failed")) return "Network error. Please check your internet connection.";
     return msg;
   };
 
-  const handleSendOtp = async (e) => {
+  const getMaskedEmail = (emailStr) => {
+    if (!emailStr) return "";
+    const parts = emailStr.split("@");
+    if (parts.length !== 2) return emailStr;
+    const [name, domain] = parts;
+    if (name.length <= 2) {
+      return `${name}***@${domain}`;
+    }
+    return `${name.substring(0, 2)}***@${domain}`;
+  };
+
+  const handleOtpFocus = (index) => {
+    // Scroll the focused OTP box into view smoothly on mobile
+    setTimeout(() => {
+      otpInputsRef.current[index]?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+        inline: "nearest"
+      });
+    }, 100);
+  };
+
+  const handleOtpChange = (val, index) => {
+    const cleanVal = val.replace(/\D/g, "");
+    if (!cleanVal) {
+      const newOtp = [...otpValues];
+      newOtp[index] = "";
+      setOtpValues(newOtp);
+      return;
+    }
+
+    const newOtp = [...otpValues];
+    newOtp[index] = cleanVal[cleanVal.length - 1]; // take the last typed digit
+    setOtpValues(newOtp);
+
+    // Automatically focus the next input box if digit typed
+    if (index < 5) {
+      const nextInput = otpInputsRef.current[index + 1];
+      nextInput?.focus();
+      // Scroll into view on mobile
+      setTimeout(() => {
+        nextInput?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 80);
+    }
+  };
+
+  const handleKeyDown = (e, index) => {
+    if (e.key === "Backspace") {
+      if (otpValues[index] === "" && index > 0) {
+        const newOtp = [...otpValues];
+        newOtp[index - 1] = "";
+        setOtpValues(newOtp);
+        otpInputsRef.current[index - 1]?.focus();
+      } else {
+        const newOtp = [...otpValues];
+        newOtp[index] = "";
+        setOtpValues(newOtp);
+      }
+    }
+  };
+
+  const handlePaste = (e) => {
     e.preventDefault();
+    const pastedData = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    if (pastedData.length === 6) {
+      const newOtp = pastedData.split("");
+      setOtpValues(newOtp);
+      otpInputsRef.current[5]?.focus();
+    }
+  };
+
+  const handleSendOtp = async (e) => {
+    if (e) e.preventDefault();
     setError("");
     localStorage.clear();
 
-    if (!companyName.trim()) return setError("Company Name is required.");
+    if (!fullName.trim()) return setError("Full Name is required.");
+    if (!companyName.trim()) return setError("Business Name is required.");
+    if (!email.trim()) return setError("Email Address is required.");
+    if (!mobile.trim()) return setError("Mobile Number is required.");
+    if (!/^\d{10}$/.test(mobile.trim())) return setError("Mobile Number must be a valid 10-digit number.");
     if (gstin && !validateGstin(gstin)) return setError("Invalid GSTIN format. Example: 27AAPCM1234F1Z5");
     if (password !== confirmPassword) return setError("Passwords do not match.");
     if (password.length < 6) return setError("Password must be at least 6 characters.");
@@ -89,19 +187,15 @@ export default function Register() {
       const sendOtpFn = httpsCallable(getFunctions(app), 'sendRegistrationOtp');
       const res = await sendOtpFn({ email: email.trim().toLowerCase() });
       setOtpSent(true);
+      setResendTimer(60);
+      setOtpValues(["", "", "", "", "", ""]);
+      setDevOtpCode("");
       
       if (res.data?.developmentOtp) {
-        setOtp(res.data.developmentOtp);
-        toast({
-          title: "Development Mode Active",
-          description: "SMTP is not configured. We auto-filled the OTP for you to test registration.",
-          duration: 8000,
-        });
+        setDevOtpCode(res.data.developmentOtp);
+        toast.info("Development Mode: SMTP not configured. OTP generated.");
       } else {
-        toast({
-          title: "OTP Sent",
-          description: `Please check ${email} for the verification code.`,
-        });
+        toast.success(`OTP Sent! Please check ${email} for the verification code.`);
       }
     } catch (err) {
       setError(getFriendlyErrorMessage(err));
@@ -110,34 +204,56 @@ export default function Register() {
     }
   };
 
+  const handleResendOtp = async () => {
+    setError("");
+    setIsResending(true);
+    try {
+      const sendOtpFn = httpsCallable(getFunctions(app), 'sendRegistrationOtp');
+      const res = await sendOtpFn({ email: email.trim().toLowerCase() });
+      setResendTimer(60);
+      setOtpValues(["", "", "", "", "", ""]);
+      setDevOtpCode("");
+      
+      if (res.data?.developmentOtp) {
+        setDevOtpCode(res.data.developmentOtp);
+        toast.info("Development Mode: SMTP not configured. New OTP generated.");
+      } else {
+        toast.success(`OTP Resent! Please check ${email} for the new verification code.`);
+      }
+    } catch (err) {
+      setError(getFriendlyErrorMessage(err));
+    } finally {
+      setIsResending(false);
+    }
+  };
+
   const handleVerifyAndRegister = async (e) => {
     e.preventDefault();
     setError("");
 
-    if (!otp || otp.length !== 6) {
+    const otpCode = otpValues.join("");
+    if (!otpCode || otpCode.length !== 6) {
       return setError("Please enter a valid 6-digit OTP.");
     }
 
     setIsVerifyingOtp(true);
     try {
       const verifyOtpFn = httpsCallable(getFunctions(app), 'verifyRegistrationOtp');
-      await verifyOtpFn({ email: email.trim().toLowerCase(), otp: otp.trim() });
+      await verifyOtpFn({ email: email.trim().toLowerCase(), otp: otpCode.trim() });
       
       // If OTP verified, proceed with registration
       const response = await registerNewCompany({
         companyName: companyName.trim(),
         gstin: gstin.trim().toUpperCase(),
         email: email.trim().toLowerCase(),
-        password: password
+        password: password,
+        admin_name: fullName.trim(),
+        phone: mobile.trim()
       });
 
       if (response && response.success) {
-        toast({
-          title: "Registration Successful",
-          description: "Logging you in and redirecting to setup...",
-        });
+        toast.success("Registration Successful! Logging you in...");
         await ownerLogin(email.trim().toLowerCase(), password);
-        // Redirect directly to settings for setup, avoiding popup or home
         navigate("/settings?tab=company_profile", { replace: true });
       } else {
         setError("Failed to register company. Please try again.");
@@ -219,29 +335,68 @@ export default function Register() {
           {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
         </button>
 
-        <div className="max-w-[440px] w-full mx-auto my-auto py-12 relative flex-shrink-0">
+        <div className="max-w-[440px] w-full mx-auto mt-6 mb-8 sm:my-auto py-4 sm:py-8 relative flex-shrink-0">
           
           {/* Mobile Logo */}
-          <div className="lg:hidden flex items-center gap-3 mb-10 mt-6">
+          <div className="lg:hidden flex items-center gap-3 mb-6 mt-8 sm:mt-0">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#E8721C] to-[#D4641A] flex items-center justify-center">
               <ShieldCheck className="w-5 h-5 text-white" />
             </div>
             <span className="text-xl font-black text-[#111118] dark:text-white tracking-tight transition-colors duration-300">EasyBMT</span>
           </div>
 
-          <div className="mb-8 mt-6">
-            <h2 className="text-3xl font-black text-[#111118] dark:text-white tracking-tight mb-2 transition-colors duration-300">Register Business</h2>
-            <p className="text-[#7A7A8C] dark:text-[#8A8A9E] font-medium transition-colors duration-300">Start your 14-day free trial. No credit card required.</p>
+          <div className="mb-5">
+            <h2 className="text-2xl sm:text-3xl font-black text-[#111118] dark:text-white tracking-tight mb-1.5 transition-colors duration-300">Register Business</h2>
+            <p className="text-sm sm:text-[15px] text-[#7A7A8C] dark:text-[#8A8A9E] font-medium transition-colors duration-300">Start your 14-day free trial. No credit card required.</p>
           </div>
 
           {(error || tenantError) && (
-            <div className="mb-6 p-4 rounded-xl bg-[#FEF2F2] dark:bg-[#3A1313] border border-[#EF4444]/20 flex gap-3 animate-in fade-in slide-in-from-top-2">
+            <div className="mb-5 p-3 sm:p-4 rounded-xl bg-[#FEF2F2] dark:bg-[#3A1313] border border-[#EF4444]/20 flex gap-3 animate-in fade-in slide-in-from-top-2">
               <ShieldAlert className="w-5 h-5 text-[#EF4444] shrink-0" />
-              <p className="text-sm font-medium text-[#EF4444]">{error || tenantError}</p>
+              <p className="text-[13px] sm:text-sm font-medium text-[#EF4444]">{error || tenantError}</p>
             </div>
           )}
 
-          <form onSubmit={otpSent ? handleVerifyAndRegister : handleSendOtp} className="space-y-5">
+          <form onSubmit={otpSent ? handleVerifyAndRegister : handleSendOtp} className="space-y-4">
+            
+            {/* Full Name & Mobile Number */}
+            <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${otpSent ? 'opacity-50 pointer-events-none' : ''}`}>
+              <div className="space-y-1.5">
+                <label className="text-sm font-bold text-[#3A3A4A] dark:text-[#D1D1E0] transition-colors duration-300">Full Name *</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <User className="h-5 w-5 text-[#ADADBE] dark:text-[#5A5A6E] transition-colors duration-300" />
+                  </div>
+                  <input
+                    type="text"
+                    required
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="w-full pl-11 pr-4 py-3 bg-[#FAFAFA] dark:bg-[#1A1A28] border border-[#DDDDE8] dark:border-[#2A2A3A] rounded-xl focus:ring-2 focus:ring-[#E8721C] focus:border-transparent outline-none transition-all text-[#111118] dark:text-white font-medium placeholder:text-[#ADADBE] dark:placeholder:text-[#5A5A6E]"
+                    placeholder="e.g. John Doe"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-bold text-[#3A3A4A] dark:text-[#D1D1E0] transition-colors duration-300">Mobile Number *</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <Phone className="h-5 w-5 text-[#ADADBE] dark:text-[#5A5A6E] transition-colors duration-300" />
+                  </div>
+                  <input
+                    type="tel"
+                    required
+                    value={mobile}
+                    onChange={(e) => setMobile(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                    className="w-full pl-11 pr-4 py-3 bg-[#FAFAFA] dark:bg-[#1A1A28] border border-[#DDDDE8] dark:border-[#2A2A3A] rounded-xl focus:ring-2 focus:ring-[#E8721C] focus:border-transparent outline-none transition-all text-[#111118] dark:text-white font-medium placeholder:text-[#ADADBE] dark:placeholder:text-[#5A5A6E]"
+                    placeholder="10-digit number"
+                    pattern="[0-9]{10}"
+                    inputMode="tel"
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Business Info */}
             <div className={`space-y-1.5 ${otpSent ? 'opacity-50 pointer-events-none' : ''}`}>
               <label className="text-sm font-bold text-[#3A3A4A] dark:text-[#D1D1E0] transition-colors duration-300">Business Name *</label>
@@ -355,31 +510,72 @@ export default function Register() {
               </div>
             )}
 
-            {/* OTP Section */}
+            {/* Premium OTP Verification Section */}
             {otpSent && (
-              <div className="space-y-1.5 mt-6 p-5 bg-[#F5F5F7] dark:bg-[#1A1A28] rounded-2xl border border-[#E8E8EE] dark:border-[#2A2A3A] animate-in fade-in slide-in-from-bottom-2">
+              <div className="space-y-4 mt-6 p-5 bg-[#F5F5F7] dark:bg-[#1A1A28] rounded-2xl border border-[#E8E8EE] dark:border-[#2A2A3A] animate-in fade-in slide-in-from-bottom-2">
                 <label className="text-sm font-bold text-[#3A3A4A] dark:text-[#D1D1E0] flex items-center justify-between">
                   <span>Enter OTP Verification Code</span>
                   <button 
                     type="button" 
                     onClick={() => setOtpSent(false)}
-                    className="text-xs text-[#E8721C] hover:text-[#D4641A]"
+                    className="text-xs text-[#E8721C] hover:text-[#D4641A] font-bold"
                   >
-                    Change Email?
+                    Change Details?
                   </button>
                 </label>
-                <input
-                  type="text"
-                  required
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').substring(0, 6))}
-                  className="w-full px-4 py-3 text-center tracking-[1em] font-black text-2xl bg-white dark:bg-[#0B0B0F] border border-[#DDDDE8] dark:border-[#2A2A3A] rounded-xl focus:ring-2 focus:ring-[#E8721C] outline-none transition-all text-[#111118] dark:text-white"
-                  placeholder="------"
-                  maxLength={6}
-                />
-                <p className="text-xs text-center text-[#7A7A8C] mt-2">
-                  A 6-digit code has been sent to your email.
+                
+                <p className="text-xs text-[#7A7A8C] dark:text-[#8A8A9E] font-medium leading-relaxed">
+                  Enter the 6-digit verification code sent to your email:<br/>
+                  <span className="font-bold text-[#111118] dark:text-white mt-1 block text-sm">{getMaskedEmail(email)}</span>
                 </p>
+
+                {/* 6 character grid */}
+                <div className="flex gap-2 justify-between mt-4" onPaste={handlePaste}>
+                  {otpValues.map((digit, idx) => (
+                    <input
+                      key={idx}
+                      ref={(el) => (otpInputsRef.current[idx] = el)}
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={1}
+                      required
+                      value={digit}
+                      onChange={(e) => handleOtpChange(e.target.value, idx)}
+                      onKeyDown={(e) => handleKeyDown(e, idx)}
+                      onFocus={() => handleOtpFocus(idx)}
+                      className="w-12 h-14 text-center font-black text-2xl bg-white dark:bg-[#0B0B0F] border border-[#DDDDE8] dark:border-[#2A2A3A] rounded-xl focus:ring-2 focus:ring-[#E8721C] focus:border-transparent outline-none transition-all text-[#111118] dark:text-white shadow-sm"
+                    />
+                  ))}
+                </div>
+
+                {/* Countdown Timer & Resend Button */}
+                <div className="flex items-center justify-between mt-4 pt-2 border-t border-[#E8E8EE] dark:border-[#2A2A3A] text-xs font-semibold">
+                  {resendTimer > 0 ? (
+                    <span className="text-[#7A7A8C]">Resend code in <span className="text-[#E8721C] font-bold">{resendTimer}s</span></span>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={isResending}
+                      onClick={handleResendOtp}
+                      className="text-[#E8721C] hover:text-[#D4641A] flex items-center gap-1.5 disabled:opacity-50"
+                    >
+                      {isResending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                      Resend Verification OTP
+                    </button>
+                  )}
+                </div>
+
+                {devOtpCode && (
+                  <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 rounded-xl text-center animate-in fade-in slide-in-from-top-1">
+                    <p className="text-xs font-bold text-amber-800 dark:text-amber-400">
+                      ⚠️ Development Mode (SMTP not configured)
+                    </p>
+                    <p className="text-sm font-black text-amber-950 dark:text-amber-200 mt-1">
+                      Use Verification Code: <span className="font-bold text-[#E8721C] text-lg tracking-widest ml-1">{devOtpCode}</span>
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -415,8 +611,6 @@ export default function Register() {
 
         </div>
       </div>
-
-
     </div>
   );
 }

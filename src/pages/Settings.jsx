@@ -1121,6 +1121,69 @@ function PrinterSettingsTab({ form, set, onSave, saving }) {
   const [testPrintStatus, setTestPrintStatus] = useState("");
   const { t } = useLanguage();
 
+  const isCapacitorNative = typeof window !== 'undefined' && !!window.Capacitor?.isNative;
+  const [nativeDevices, setNativeDevices] = useState([]);
+  const [permissionGranted, setPermissionGranted] = useState(false);
+
+  // Sync permissions and fetch paired devices when in Capacitor native app
+  useEffect(() => {
+    if (isCapacitorNative && form.printer_type === "bluetooth") {
+      checkNativePermissionsAndFetchDevices();
+    }
+  }, [isCapacitorNative, form.printer_type]);
+
+  const checkNativePermissionsAndFetchDevices = async () => {
+    try {
+      const { Capacitor } = window;
+      const permResult = await Capacitor.Plugins.BluetoothPrinter.checkBluetoothPermission();
+      setPermissionGranted(permResult.granted);
+      if (permResult.granted) {
+        fetchNativePairedDevices();
+      }
+    } catch (e) {
+      console.warn("Capacitor native Bluetooth permission check failed:", e);
+    }
+  };
+
+  const handleRequestNativePermission = async () => {
+    try {
+      const { Capacitor } = window;
+      const permResult = await Capacitor.Plugins.BluetoothPrinter.requestBluetoothPermission();
+      setPermissionGranted(permResult.granted);
+      if (permResult.granted) {
+        toast.success("Bluetooth permission granted!");
+        fetchNativePairedDevices();
+      } else {
+        toast.error("Bluetooth Connect permission denied.");
+      }
+    } catch (e) {
+      toast.error("Permission request failed: " + e.message);
+    }
+  };
+
+  const fetchNativePairedDevices = async () => {
+    setScanning(true);
+    try {
+      const { Capacitor } = window;
+      const result = await Capacitor.Plugins.BluetoothPrinter.getPairedDevices();
+      setNativeDevices(result.devices || []);
+      if ((result.devices || []).length === 0) {
+        toast.info("No paired Bluetooth classic devices found. Please pair your MPT-II in Android Settings first.");
+      }
+    } catch (e) {
+      console.warn("Failed to fetch native paired devices:", e);
+      toast.error(e.message || "Failed to list paired devices.");
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  const handleSelectNativePrinter = (device) => {
+    set("paired_printer_name", device.name || "Bluetooth Printer");
+    set("paired_printer_address", device.address);
+    toast.success(`Selected Native Printer: ${device.name || "Bluetooth Printer"}`);
+  };
+
   const caps = getPrintCapabilities();
 
   useEffect(() => {
@@ -1525,52 +1588,129 @@ function PrinterSettingsTab({ form, set, onSave, saving }) {
           {/* ── BLUETOOTH (BLE) & USB PANEL ── */}
           {(isBluetooth || isUsb) && (
             <div className="space-y-3">
-              <div className="bg-slate-50 dark:bg-secondary/20 rounded-xl p-4 space-y-3 border border-border">
-                <div className="flex items-center gap-2">
-                  {isBluetooth ? <Bluetooth className="w-4 h-4 text-amber-500" /> : <Usb className="w-4 h-4 text-amber-500" />}
-                  <h4 className="font-extrabold text-[13px] text-slate-900 dark:text-slate-100">{isBluetooth ? "Bluetooth (BLE ONLY)" : "USB Port Connection"}</h4>
-                </div>
-                {isBluetooth && (
-                  <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-lg p-3">
-                    <p className="text-[11px] text-red-700 dark:text-red-400 font-semibold mb-1">⚠️ IMPORTANT: MPT-II will NOT work here!</p>
-                    <p className="text-[10px] text-red-600 dark:text-red-300 leading-tight">
-                      MPT-II is a "Classic Bluetooth" printer. This scanner only finds "BLE" printers.
-                      <br/>👉 <b>If on Windows PC:</b> Click the <b>"COM Port (PC)"</b> option on the left.
-                      <br/>👉 <b>If on Android:</b> Click the <b>"RawBT"</b> option on the left.
-                    </p>
+              {/* NATIVE BLUETOOTH (ANDROID CAPACITOR) */}
+              {isBluetooth && isCapacitorNative && (
+                <div className="bg-slate-50 dark:bg-secondary/20 rounded-xl p-4 space-y-3 border border-border">
+                  <div className="flex items-center gap-2">
+                    <Bluetooth className="w-4 h-4 text-amber-500" />
+                    <h4 className="font-extrabold text-[13px] text-slate-900 dark:text-slate-100">Android Bluetooth Direct Print</h4>
+                    <span className="ml-auto text-[9px] font-black px-2 py-0.5 bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-full">NATIVE</span>
                   </div>
-                )}
-                <div className={cn("flex items-center justify-between p-3 rounded-lg border",
-                  isConnected ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-500/25" : "bg-white dark:bg-card border-border"
-                )}>
-                  <div>
-                    <p className="text-[10px] text-muted-foreground font-medium">Connected Printer</p>
-                    <p className={cn("text-[13px] font-black", isConnected ? "text-emerald-700 dark:text-emerald-400" : "text-slate-400 dark:text-slate-500")}>
-                      {isConnected ? form.paired_printer_name : "None Paired"}
-                    </p>
-                  </div>
-                  {isConnected && (
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                      <Button type="button" size="sm" variant="ghost" onClick={handleDisconnect} className="h-7 text-[10px] text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 px-2">Disconnect</Button>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                    Query paired Bluetooth classic thermal printers (like <strong>MPT-II</strong>) directly. Please pair your printer in your phone's Android Bluetooth system settings first.
+                  </p>
+
+                  {!permissionGranted ? (
+                    <Button type="button" onClick={handleRequestNativePermission} className="w-full text-xs font-bold gap-1.5 bg-amber-500 hover:bg-amber-600 text-black h-9 shadow-md">
+                      <Lock className="w-3.5 h-3.5" /> Request Bluetooth Permission
+                    </Button>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center p-3 rounded-lg border bg-white dark:bg-card border-border">
+                        <div>
+                          <p className="text-[10px] text-muted-foreground font-medium">Selected Printer</p>
+                          <p className={cn("text-[13px] font-black", form.paired_printer_address ? "text-amber-500" : "text-slate-400 dark:text-slate-500")}>
+                            {form.paired_printer_name || "None Selected"}
+                          </p>
+                          {form.paired_printer_address && (
+                            <p className="text-[9px] text-muted-foreground font-mono mt-0.5">{form.paired_printer_address}</p>
+                          )}
+                        </div>
+                        {form.paired_printer_address && (
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                            <Button type="button" size="sm" variant="ghost" onClick={handleDisconnect} className="h-7 text-[10px] text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 px-2">Disconnect</Button>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button type="button" onClick={fetchNativePairedDevices} disabled={scanning} className="flex-1 text-xs font-bold gap-1.5 bg-amber-500 hover:bg-amber-600 text-black h-9">
+                          <RefreshCw className={cn("w-3.5 h-3.5", scanning && "animate-spin")} />
+                          {scanning ? "Scanning Paired..." : "Scan Paired Printers"}
+                        </Button>
+                        {form.paired_printer_address && (
+                          <Button type="button" onClick={handleTestPrint} variant="outline" className="h-9 px-3 border-amber-300 dark:border-amber-500/30">
+                            <Printer className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                          </Button>
+                        )}
+                      </div>
+
+                      {nativeDevices.length > 0 && (
+                        <div className="border border-border/80 rounded-xl p-2 bg-card max-h-48 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
+                          {nativeDevices.map((device, idx) => {
+                            const isSelected = form.paired_printer_address === device.address;
+                            return (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => handleSelectNativePrinter(device)}
+                                className={cn("w-full px-3 py-2 flex items-center justify-between text-left hover:bg-secondary/40 rounded-lg text-xs font-semibold border-b border-border/5 last:border-0",
+                                  isSelected && "text-amber-500 bg-amber-500/5 font-black"
+                                )}
+                              >
+                                <div>
+                                  <p className="font-extrabold text-[12px]">{device.name || "Bluetooth Printer"}</p>
+                                  <p className="text-[10px] text-muted-foreground font-mono">{device.address}</p>
+                                </div>
+                                {isSelected && <Check className="w-4 h-4 text-amber-500 shrink-0" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
-                <div className="flex gap-2">
-                  <Button type="button" onClick={handleStartScan} disabled={scanning}
-                    className="flex-1 text-xs font-bold gap-1.5 bg-amber-500 hover:bg-amber-600 text-black h-9">
-                    <RefreshCw className={cn("w-3.5 h-3.5", scanning && "animate-spin")} />
-                    {scanning ? "Scanning..." : `Scan for ${isBluetooth ? "BT Printers" : "USB Devices"}`}
-                  </Button>
-                  {isConnected && (
-                    <Button type="button" onClick={handleTestPrint} variant="outline" className="h-9 px-3 border-amber-300 dark:border-amber-500/30">
-                      <Printer className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                    </Button>
-                  )}
-                </div>
-              </div>
+              )}
 
-              {/* Removed dummy scan results section since real browser picker is used */}
+              {/* BROWSER WEB BLUETOOTH (BLE ONLY) OR USB */}
+              {(!isBluetooth || !isCapacitorNative) && (
+                <div className="bg-slate-50 dark:bg-secondary/20 rounded-xl p-4 space-y-3 border border-border">
+                  <div className="flex items-center gap-2">
+                    {isBluetooth ? <Bluetooth className="w-4 h-4 text-amber-500" /> : <Usb className="w-4 h-4 text-amber-500" />}
+                    <h4 className="font-extrabold text-[13px] text-slate-900 dark:text-slate-100">{isBluetooth ? "Bluetooth (BLE ONLY)" : "USB Port Connection"}</h4>
+                  </div>
+                  {isBluetooth && (
+                    <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-lg p-3">
+                      <p className="text-[11px] text-red-700 dark:text-red-400 font-semibold mb-1">⚠️ IMPORTANT: MPT-II will NOT work here!</p>
+                      <p className="text-[10px] text-red-600 dark:text-red-300 leading-tight">
+                        MPT-II is a "Classic Bluetooth" printer. This scanner only finds "BLE" printers.
+                        <br/>👉 <b>If on Windows PC:</b> Click the <b>"COM Port (PC)"</b> option on the left.
+                        <br/>👉 <b>If on Android:</b> Click the <b>"RawBT"</b> option on the left.
+                      </p>
+                    </div>
+                  )}
+                  <div className={cn("flex items-center justify-between p-3 rounded-lg border",
+                    isConnected ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-500/25" : "bg-white dark:bg-card border-border"
+                  )}>
+                    <div>
+                      <p className="text-[10px] text-muted-foreground font-medium">Connected Printer</p>
+                      <p className={cn("text-[13px] font-black", isConnected ? "text-emerald-700 dark:text-emerald-400" : "text-slate-400 dark:text-slate-500")}>
+                        {isConnected ? form.paired_printer_name : "None Paired"}
+                      </p>
+                    </div>
+                    {isConnected && (
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        <Button type="button" size="sm" variant="ghost" onClick={handleDisconnect} className="h-7 text-[10px] text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 px-2">Disconnect</Button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button type="button" onClick={handleStartScan} disabled={scanning}
+                      className="flex-1 text-xs font-bold gap-1.5 bg-amber-500 hover:bg-amber-600 text-black h-9">
+                      <RefreshCw className={cn("w-3.5 h-3.5", scanning && "animate-spin")} />
+                      {scanning ? "Scanning..." : `Scan for ${isBluetooth ? "BT Printers" : "USB Devices"}`}
+                    </Button>
+                    {isConnected && (
+                      <Button type="button" onClick={handleTestPrint} variant="outline" className="h-9 px-3 border-amber-300 dark:border-amber-500/30">
+                        <Printer className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

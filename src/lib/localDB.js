@@ -277,16 +277,25 @@ export async function putLocal(storeName, data) {
     } catch (_) {}
   }
 
-  // Enterprise duplicate prevention
+  // Enterprise duplicate prevention with self-healing suffix resolution
   if (storeName === "invoices") {
-    const invNo = data.invoice_number || data.invoice_no;
+    let invNo = data.invoice_number || data.invoice_no;
     if (invNo) {
-      data.invoice_no = invNo;
-      data.invoice_number = invNo;
-      const exists = await db.invoices.where("invoice_no").equals(invNo).first();
-      if (exists) {
-        throw new Error("409 Conflict: Invoice number already processed.");
+      let uniqueInvNo = invNo;
+      let counter = 1;
+      let exists = await db.invoices.where("invoice_no").equals(uniqueInvNo).first();
+      
+      while (exists) {
+        uniqueInvNo = `${invNo}-${String.fromCharCode(64 + counter)}`; // Appends -A, -B, etc.
+        exists = await db.invoices.where("invoice_no").equals(uniqueInvNo).first();
+        counter++;
+        if (counter > 26) {
+          uniqueInvNo = `${invNo}-${Date.now().toString().slice(-4)}`;
+          break;
+        }
       }
+      data.invoice_no = uniqueInvNo;
+      data.invoice_number = uniqueInvNo;
     }
   }
 
@@ -1025,9 +1034,44 @@ if (typeof window !== "undefined") {
 // ======================================================
 
 let syncIntervalRef = null;
+let inventoryUnsubscribe = null;
+
+export async function startRealtimeInventorySync() {
+  if (inventoryUnsubscribe) return;
+  const ctx = await getCompanyContext();
+  if (!ctx.companyId) return;
+
+  const { onSnapshot, collection } = await import("firebase/firestore");
+  const colRef = collection(firestoreDb, "companies", ctx.companyId, "inventory");
+  
+  inventoryUnsubscribe = onSnapshot(colRef, async (snapshot) => {
+    let changed = false;
+    await db.transaction("rw", db.inventory, async () => {
+      for (const docChange of snapshot.docChanges()) {
+        const data = docChange.doc.data();
+        if (docChange.type === 'added' || docChange.type === 'modified') {
+          const existing = await db.inventory.get(docChange.doc.id);
+          if (!existing || data.updated_date > (existing.updated_date || "")) {
+            await db.inventory.put({ id: docChange.doc.id, ...data });
+            changed = true;
+          }
+        } else if (docChange.type === 'removed') {
+          await db.inventory.delete(docChange.doc.id);
+          changed = true;
+        }
+      }
+    });
+    
+    if (changed) {
+      broadcastMutation("SYNC_COMPLETE", { collectionName: "inventory" });
+    }
+  });
+}
 
 export function startSyncEngine() {
   if (syncIntervalRef) return;
+  
+  startRealtimeInventorySync().catch(console.error);
 
   syncIntervalRef = setInterval(() => {
     if (!navigator.onLine) return;
@@ -1040,6 +1084,10 @@ export function stopSyncEngine() {
   if (syncIntervalRef) {
     clearInterval(syncIntervalRef);
     syncIntervalRef = null;
+  }
+  if (inventoryUnsubscribe) {
+    inventoryUnsubscribe();
+    inventoryUnsubscribe = null;
   }
 }
 

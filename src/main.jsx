@@ -17,7 +17,35 @@ if (typeof window !== 'undefined') {
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { registerSW } from 'virtual:pwa-register'
+import { Capacitor } from '@capacitor/core'
 import App from '@/App.jsx'
+
+// Define window.Capacitor.isNative globally to support legacy checks across the app using robust getter/setter interceptor
+if (typeof window !== 'undefined') {
+  let capVal = window.Capacitor || {};
+  try {
+    capVal.isNative = Capacitor.isNativePlatform();
+  } catch (_) {}
+  
+  Object.defineProperty(window, 'Capacitor', {
+    get() {
+      if (capVal && capVal.isNative === undefined) {
+        try {
+          capVal.isNative = Capacitor.isNativePlatform();
+        } catch (_) {}
+      }
+      return capVal;
+    },
+    set(newVal) {
+      capVal = newVal || {};
+      try {
+        capVal.isNative = Capacitor.isNativePlatform();
+      } catch (_) {}
+    },
+    configurable: true,
+    enumerable: true
+  });
+}
 import '@/index.css'
 import { ThemeProvider } from "@/components/theme-provider"
 import { LanguageProvider } from "@/lib/LanguageContext"
@@ -129,7 +157,7 @@ class RootErrorBoundary extends React.Component {
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <RootErrorBoundary>
-    <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme" attribute="class">
+    <ThemeProvider defaultTheme="light" enableSystem={false} storageKey="vite-ui-theme" attribute="class">
       <LanguageProvider>
         <App />
       </LanguageProvider>

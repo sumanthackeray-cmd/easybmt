@@ -34,7 +34,7 @@ exports.registerTenant = functions.https.onCall(async (data, context) => {
       ownerUser = await auth.createUser({
         email: email.trim().toLowerCase(),
         password: password,
-        displayName: "Owner"
+        displayName: data.admin_name || "Owner"
       });
     } catch (authErr) {
       if (authErr.code === "auth/email-already-exists") {
@@ -274,9 +274,10 @@ exports.registerTenant = functions.https.onCall(async (data, context) => {
     batch.set(settingsRef, {
       shop_name: companyName.trim(),
       business_type: "retail",
-      owner_name: "Owner",
+      owner_name: data.admin_name || "Owner",
       gstin: gstin ? gstin.trim().toUpperCase() : "",
       email: email.trim().toLowerCase(),
+      phone: phone ? phone.trim() : "",
       created_date: new Date().toISOString(),
       updated_date: new Date().toISOString()
     });
@@ -285,7 +286,7 @@ exports.registerTenant = functions.https.onCall(async (data, context) => {
     const ownerProfileRef = db.doc(`companies/${companyId}/users/${ownerUser.uid}`);
     batch.set(ownerProfileRef, {
       id: ownerUser.uid,
-      name: "Owner",
+      name: data.admin_name || "Owner",
       email: email.trim().toLowerCase(),
       contact_email: email.trim().toLowerCase(),
       contact_mobile: phone ? phone.trim() : "",
@@ -554,46 +555,57 @@ exports.manageStaffUser = functions.https.onCall(async (data, context) => {
 
 const nodemailer = require("nodemailer");
 
-// Create reusable transporter object using the default SMTP transport
-// You can replace these with your actual SMTP credentials or environment variables
+// SMTP transporter configured via Firebase environment config.
+// To set these, run from the /functions directory:
+//   firebase functions:config:set smtp.host="mail.vogats.com" smtp.port="587" smtp.user="Info@vogats.com" smtp.pass="YOUR_PASSWORD"
+// Then deploy: firebase deploy --only functions
+const smtpConfig = functions.config().smtp || {};
+
 const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false, // true for 465, false for other ports
+  pool: true,
+  host: smtpConfig.host || 'smtp.gmail.com',
+  port: parseInt(smtpConfig.port || '587', 10),
+  secure: (smtpConfig.port === '465'),
   auth: {
-    user: 'YOUR_EMAIL@gmail.com', // Replace with your email
-    pass: 'YOUR_APP_PASSWORD'     // Replace with your app password
+    user: smtpConfig.user || '',
+    pass: smtpConfig.pass || ''
+  },
+  tls: {
+    rejectUnauthorized: false
   }
 });
 
 async function sendWelcomeEmailInternal(email, companyName, companyId) {
   const mailOptions = {
-    from: '"GST Billing App" <noreply@gstbillingapp.com>', // sender address
-    to: email, // list of receivers
-    subject: "Welcome to GST Billing! Here is your Company ID", // Subject line
-    text: `Hello ${companyName},\n\nWelcome to GST Billing! Your company has been registered successfully.\n\nYour Company ID is: ${companyId}\n\nPlease keep this ID safe and share it with your staff so they can log in to your workspace.\n\nThank you,\nGST Billing Team`, // plain text body
+    from: '"EasyBMT" <Info@vogats.com>',
+    to: email,
+    subject: `Welcome to EasyBMT! Your Company ID is ${companyId}`,
+    text: `Hello ${companyName},\n\nWelcome to EasyBMT! Your company workspace has been registered successfully.\n\nYour Company ID is: ${companyId}\n\nPlease keep this ID safe and share it with your staff so they can log in to your workspace.\n\nThank you,\nEasyBMT Team`,
     html: `
-      <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-        <h2>Welcome to GST Billing!</h2>
-        <p>Hello <b>${companyName}</b>,</p>
-        <p>Your company has been registered successfully.</p>
-        <div style="background-color: #f4f4f5; padding: 15px; border-radius: 8px; margin: 20px 0;">
-          <p style="margin: 0; font-size: 14px; color: #666;">Your Company ID:</p>
-          <h3 style="margin: 5px 0 0 0; font-size: 24px; color: #4f46e5; letter-spacing: 2px;">${companyId}</h3>
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; color: #333; background-color: #ffffff;">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <h1 style="color: #E8721C; font-size: 28px; margin: 0;">EasyBMT</h1>
+          <p style="color: #7A7A8C; font-size: 14px; margin: 4px 0 0;">Smart GST Billing & Business Management</p>
         </div>
-        <p>Please keep this ID safe. You will need to share it with your staff members so they can log in to your workspace.</p>
-        <br>
-        <p>Thank you,<br>GST Billing Team</p>
+        <h2 style="color: #111118; font-size: 22px;">Welcome, ${companyName}! 🎉</h2>
+        <p style="color: #555; line-height: 1.6;">Your EasyBMT workspace has been successfully created. Here is your unique <strong>Company ID</strong> — share this with your staff so they can log in.</p>
+        <div style="background-color: #FFF7F0; border: 1px solid #E8721C; padding: 20px; border-radius: 10px; margin: 24px 0; text-align: center;">
+          <p style="margin: 0; font-size: 13px; color: #E8721C; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">Your Company ID</p>
+          <h3 style="margin: 8px 0 0 0; font-size: 28px; color: #111118; letter-spacing: 4px; font-weight: 900;">${companyId}</h3>
+        </div>
+        <p style="color: #555; font-size: 13px; line-height: 1.6;">⚠️ Keep this ID confidential. Anyone with your Company ID and credentials can access your workspace.</p>
+        <hr style="border: none; border-top: 1px solid #E8E8EE; margin: 28px 0;">
+        <p style="color: #9A9AAE; font-size: 12px; text-align: center;">© ${new Date().getFullYear()} EasyBMT Inc. &nbsp;|&nbsp; <a href="#" style="color: #E8721C; text-decoration: none;">Privacy Policy</a></p>
       </div>
     `
   };
 
   try {
     const info = await transporter.sendMail(mailOptions);
-    console.log("Message sent: %s", info.messageId);
+    console.log("Welcome email sent: %s", info.messageId);
   } catch (error) {
-    console.error("Error sending email: ", error);
-    // Don't throw the error so it doesn't break the registration flow
+    console.error("Error sending welcome email: ", error);
+    // Non-blocking: don't throw so registration is not interrupted
   }
 }
 
@@ -614,6 +626,16 @@ exports.sendRegistrationOtp = functions.https.onCall(async (data, context) => {
 
   const normalizedEmail = email.trim().toLowerCase();
   
+  // Check if email already exists in Firebase Auth
+  try {
+    await admin.auth().getUserByEmail(normalizedEmail);
+    throw new functions.https.HttpsError("already-exists", "This email is already registered. Please sign in.");
+  } catch (err) {
+    if (err.code !== "auth/user-not-found") {
+      throw err;
+    }
+  }
+  
   // Generate 6-digit OTP
   const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
   
@@ -629,21 +651,63 @@ exports.sendRegistrationOtp = functions.https.onCall(async (data, context) => {
     });
 
     const mailOptions = {
-      from: '"GST Billing App" <noreply@gstbillingapp.com>',
+      from: '"EasyBMT" <Info@vogats.com>',
       to: normalizedEmail,
-      subject: "Your Registration OTP - GST Billing",
-      text: `Your OTP for registration is: ${otpCode}\n\nThis OTP is valid for 10 minutes.`,
-      html: `
-        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-          <h2>GST Billing Registration</h2>
-          <p>You requested to register a new workspace.</p>
-          <div style="background-color: #f4f4f5; padding: 15px; border-radius: 8px; margin: 20px 0; text-align: center;">
-            <p style="margin: 0; font-size: 14px; color: #666;">Your Verification Code:</p>
-            <h3 style="margin: 10px 0 0 0; font-size: 32px; color: #4f46e5; letter-spacing: 4px;">${otpCode}</h3>
-          </div>
-          <p style="color: #666; font-size: 12px;">This code is valid for 10 minutes. Do not share it with anyone.</p>
-        </div>
-      `
+      subject: "Your Verification Code - EasyBMT",
+      text: `Your EasyBMT verification code is: ${otpCode}\n\nThis code is valid for 10 minutes. Do not share it with anyone.`,
+      html: `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>EasyBMT Verification</title>
+</head>
+<body style="margin:0;padding:0;background:#FFF7ED;font-family:Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#FFF7ED;padding:30px 10px;">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 4px 18px rgba(0,0,0,0.08);max-width:600px;">
+  <tr>
+    <td align="center" style="background:linear-gradient(135deg,#F97316,#EA580C);padding:40px 20px;">
+      <div style="font-size:38px;line-height:1;">&#128230;</div>
+      <div style="font-size:34px;font-weight:bold;color:#ffffff;margin-top:10px;letter-spacing:-1px;">Easy<span style="color:#FED7AA;">BMT</span></div>
+      <div style="color:#FFE7D1;font-size:12px;margin-top:6px;letter-spacing:1px;">BUSINESS MANAGEMENT TOOL</div>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:40px 35px 30px;">
+      <div style="width:60px;height:60px;background:#FFF7ED;border:2px solid #FED7AA;border-radius:14px;text-align:center;line-height:56px;font-size:28px;margin-bottom:20px;">&#9989;</div>
+      <div style="color:#F97316;font-size:12px;font-weight:bold;letter-spacing:1px;margin-bottom:10px;">WELCOME TO EASYBMT &#128075;</div>
+      <div style="font-size:28px;line-height:36px;font-weight:bold;color:#111827;margin-bottom:16px;">Verify your email address</div>
+      <div style="font-size:15px;line-height:26px;color:#57534E;margin-bottom:28px;">You're almost there! Enter the verification code below to confirm your email and activate your EasyBMT workspace.</div>
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:16px;margin-bottom:22px;">
+        <tr>
+          <td align="center" style="padding:28px 20px;">
+            <div style="font-size:11px;color:#9A3412;font-weight:bold;letter-spacing:1px;margin-bottom:15px;">YOUR VERIFICATION CODE</div>
+            <div style="display:inline-block;background:#ffffff;border:2px solid #F97316;border-radius:12px;padding:18px 36px;font-size:40px;font-weight:bold;letter-spacing:8px;color:#C2410C;font-family:'Courier New',monospace;">${otpCode}</div>
+            <div style="margin-top:14px;font-size:13px;color:#78716C;">Expires in <strong style="color:#C2410C;">10 minutes</strong></div>
+          </td>
+        </tr>
+      </table>
+      <div style="background:#F0FDF4;border-left:4px solid #22C55E;padding:14px 16px;border-radius:0 8px 8px 0;font-size:14px;line-height:22px;color:#166534;margin-bottom:16px;"><strong>How to verify:</strong><br>Switch back to the EasyBMT registration page and enter the code above in the 6-digit boxes.</div>
+      <div style="background:#FFFBEB;border-left:4px solid #F59E0B;padding:14px 16px;border-radius:0 8px 8px 0;font-size:14px;line-height:22px;color:#78350F;margin-bottom:16px;">&#9888;&#65039; If you didn't create an EasyBMT account, you can safely ignore this email.</div>
+      <div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:10px;padding:14px 16px;font-size:13px;color:#78716C;line-height:22px;">&#128274; EasyBMT uses secure encryption. We will <strong>never</strong> ask for your password via email.</div>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" style="background:#FAFAF9;border-top:1px solid #EEEEEE;padding:24px 20px;">
+      <div style="margin-bottom:10px;">
+        <a href="https://www.easybmt.com/contact" style="color:#78716C;text-decoration:none;font-size:12px;margin:0 8px;">Help Center</a>
+        <a href="https://www.easybmt.com/privacy" style="color:#78716C;text-decoration:none;font-size:12px;margin:0 8px;">Privacy</a>
+        <a href="https://www.easybmt.com/terms" style="color:#78716C;text-decoration:none;font-size:12px;margin:0 8px;">Terms</a>
+      </div>
+      <div style="font-size:12px;color:#A8A29E;line-height:20px;">&#169; ${new Date().getFullYear()} EasyBMT. All rights reserved.<br>Easy Business Management Tool</div>
+    </td>
+  </tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>`
     };
 
     await transporter.sendMail(mailOptions);
@@ -698,3 +762,136 @@ exports.verifyRegistrationOtp = functions.https.onCall(async (data, context) => 
   return { success: true };
 });
 
+
+exports.sendPasswordResetEmail = functions.https.onCall(async (data, context) => {
+  const { email } = data;
+  if (!email) {
+    throw new functions.https.HttpsError("invalid-argument", "Email is required.");
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+
+  try {
+    await admin.auth().getUserByEmail(normalizedEmail);
+  } catch (err) {
+    throw new functions.https.HttpsError("not-found", "No account found with this email address.");
+  }
+
+  try {
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Store OTP in Firestore with expiration
+    await db.collection("passwordResetOtps").doc(normalizedEmail).set({
+      otp: otp,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      expiresAt: Date.now() + 5 * 60 * 1000 // 5 minutes
+    });
+
+    const mailOptions = {
+      from: '"EasyBMT" <Info@vogats.com>',
+      to: normalizedEmail,
+      subject: "Your EasyBMT Password Reset OTP",
+      text: `Your OTP to reset your EasyBMT password is: ${otp}\n\nThis OTP expires in 5 minutes. If you didn't request this, ignore this email.`,
+      html: `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>EasyBMT Password Reset OTP</title>
+</head>
+<body style="margin:0;padding:0;background:#FFF7ED;font-family:Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#FFF7ED;padding:30px 10px;">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 4px 18px rgba(0,0,0,0.08);max-width:600px;">
+  <tr>
+    <td align="center" style="background:linear-gradient(135deg,#F97316,#EA580C);padding:40px 20px;">
+      <div style="font-size:38px;line-height:1;">&#128230;</div>
+      <div style="font-size:34px;font-weight:bold;color:#ffffff;margin-top:10px;letter-spacing:-1px;">Easy<span style="color:#FED7AA;">BMT</span></div>
+      <div style="color:#FFE7D1;font-size:12px;margin-top:6px;letter-spacing:1px;">BUSINESS MANAGEMENT TOOL</div>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:40px 35px 30px;">
+      <div style="width:60px;height:60px;background:#FFF7ED;border:2px solid #FED7AA;border-radius:14px;text-align:center;line-height:56px;font-size:28px;margin-bottom:20px;">&#128274;</div>
+      <div style="color:#F97316;font-size:12px;font-weight:bold;letter-spacing:1px;margin-bottom:10px;">ACCOUNT SECURITY</div>
+      <div style="font-size:28px;line-height:36px;font-weight:bold;color:#111827;margin-bottom:16px;">Reset your password</div>
+      <div style="font-size:15px;line-height:26px;color:#57534E;margin-bottom:28px;">We received a request to reset the password for your EasyBMT account. Use the OTP below to set a new password.</div>
+      
+      <div style="background:#FFFBEB;border:2px dashed #F59E0B;border-radius:12px;padding:24px;text-align:center;margin-bottom:28px;">
+        <div style="font-size:13px;color:#92400E;text-transform:uppercase;letter-spacing:1.5px;font-weight:bold;margin-bottom:8px;">Your Verification Code</div>
+        <div style="font-size:42px;font-weight:900;color:#111827;letter-spacing:6px;font-family:monospace;">${otp}</div>
+      </div>
+
+      <div style="background:#FFFBEB;border-left:4px solid #F59E0B;padding:14px 16px;border-radius:0 8px 8px 0;font-size:14px;line-height:22px;color:#78350F;margin-bottom:16px;">&#9888;&#65039; This OTP expires in <strong>5 minutes</strong>. Do not share this code with anyone.</div>
+      <div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:10px;padding:14px 16px;font-size:13px;color:#78716C;line-height:22px;">&#128274; EasyBMT uses secure encryption. We will <strong>never</strong> ask for your password via email.</div>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" style="background:#FAFAF9;border-top:1px solid #EEEEEE;padding:24px 20px;">
+      <div style="margin-bottom:10px;">
+        <a href="https://www.easybmt.com/contact" style="color:#78716C;text-decoration:none;font-size:12px;margin:0 8px;">Help Center</a>
+        <a href="https://www.easybmt.com/privacy" style="color:#78716C;text-decoration:none;font-size:12px;margin:0 8px;">Privacy</a>
+        <a href="https://www.easybmt.com/terms" style="color:#78716C;text-decoration:none;font-size:12px;margin:0 8px;">Terms</a>
+      </div>
+      <div style="font-size:12px;color:#A8A29E;line-height:20px;">&#169; ${new Date().getFullYear()} EasyBMT. All rights reserved.<br>Easy Business Management Tool</div>
+    </td>
+  </tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>`
+    };
+
+    await transporter.sendMail(mailOptions);
+    return { success: true };
+  } catch (error) {
+    console.error("Password reset email failed:", error);
+    throw new functions.https.HttpsError("internal", "Failed to send password reset OTP.");
+  }
+});
+
+exports.resetPasswordWithOtp = functions.https.onCall(async (data, context) => {
+  const { email, otp, newPassword } = data;
+  if (!email || !otp || !newPassword) {
+    throw new functions.https.HttpsError("invalid-argument", "Email, OTP, and new password are required.");
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+
+  // Validate OTP
+  const otpRef = db.collection("passwordResetOtps").doc(normalizedEmail);
+  const otpDoc = await otpRef.get();
+
+  if (!otpDoc.exists) {
+    throw new functions.https.HttpsError("not-found", "Invalid or expired OTP.");
+  }
+
+  const otpData = otpDoc.data();
+  
+  if (otpData.otp !== otp) {
+    throw new functions.https.HttpsError("invalid-argument", "Incorrect OTP.");
+  }
+
+  if (Date.now() > otpData.expiresAt) {
+    // Delete expired OTP
+    await otpRef.delete();
+    throw new functions.https.HttpsError("failed-precondition", "OTP has expired.");
+  }
+
+  try {
+    const userRecord = await admin.auth().getUserByEmail(normalizedEmail);
+    // Update password
+    await admin.auth().updateUser(userRecord.uid, {
+      password: newPassword
+    });
+
+    // Delete the OTP so it can't be reused
+    await otpRef.delete();
+
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to update password:", error);
+    throw new functions.https.HttpsError("internal", "Failed to reset password.");
+  }
+});

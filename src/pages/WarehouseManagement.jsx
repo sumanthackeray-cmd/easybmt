@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   Building2, Users, Layers, AlertTriangle, FileText, CheckSquare, Plus, Package,
-  Search, Printer, MapPin, TrendingUp, Trash2, Edit2, CheckCircle2, Barcode, Calendar, Grid, List, Activity, Sparkles, RefreshCw,
+  Search, Printer, MapPin, TrendingUp, Trash2, Edit2, CheckCircle2, Barcode, Calendar, Grid, List, Activity, Sparkles, RefreshCw, Camera,
   DollarSign, TrendingDown, Percent, Wallet, Clock, RefreshCcw, Box, Anchor
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import { toast } from "@/lib/toast";
 import PermissionGuard from '@/components/PermissionGuard';
 import ResponsiveTabs from "@/components/ui/ResponsiveTabs";
 import { useNavigate } from 'react-router-dom';
+import CameraBarcodeScanner from '@/components/ui/CameraBarcodeScanner';
 
 export default function WarehouseManagement() {
   const { t } = useLanguage();
@@ -94,6 +95,7 @@ export default function WarehouseManagement() {
   const [isBatchOpen, setIsBatchOpen] = useState(false);
   const [isGrnOpen, setIsGrnOpen] = useState(false);
   const [isQuickAssignOpen, setIsQuickAssignOpen] = useState(false);
+  const [isCameraScannerOpen, setIsCameraScannerOpen] = useState(false);
   
   // Selected / Editing Items
   const [selectedVendor, setSelectedVendor] = useState(null);
@@ -1305,8 +1307,20 @@ export default function WarehouseManagement() {
 
                   {rackLayoutMode === 'table' && (
                     <div className="flex items-center gap-2 bg-background border border-border/60 p-1.5 rounded-xl max-w-sm shadow-sm">
-                      <Search className="w-4 h-4 text-muted-foreground ml-2" />
+                      <Search className="w-4 h-4 text-muted-foreground ml-2 shrink-0" />
                       <Input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder={t('warehouse.search_product_placeholder')} className="bg-transparent border-0 h-8 focus-visible:ring-0 focus-visible:ring-offset-0 px-2 text-sm placeholder:text-muted-foreground/50 w-36 sm:w-48" />
+                      
+                      {/* Camera Barcode Scanner Trigger Button */}
+                      <Button
+                        type="button"
+                        onClick={() => setIsCameraScannerOpen(true)}
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 rounded-lg bg-amber-500/10 hover:bg-amber-500 hover:text-black text-amber-500 shrink-0 shadow-sm"
+                        title="Scan Barcode via Camera"
+                      >
+                        <Camera className="w-3.5 h-3.5" />
+                      </Button>
                     </div>
                   )}
                 </div>
@@ -2319,6 +2333,13 @@ export default function WarehouseManagement() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* CAMERA BARCODE SCANNER MODAL */}
+      <CameraBarcodeScanner
+        open={isCameraScannerOpen}
+        onOpenChange={setIsCameraScannerOpen}
+        onScan={setSearchQuery}
+      />
 
     </div>
   );

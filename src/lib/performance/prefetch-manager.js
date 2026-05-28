@@ -5,15 +5,15 @@ import { base44 } from "@/api/base44Client";
 const TIER_CRITICAL = [
   { key: ["shopSettings"], fn: () => base44.entities.ShopSettings.list() },
   { key: ["products"], fn: () => base44.entities.Product.list() },
-];
-
-/** Secondary — deferred until browser is idle. */
-const TIER_DEFERRED = [
   { key: ["customers"], fn: () => base44.entities.Customer.list() },
   { key: ["invoices"], fn: () => base44.entities.Invoice.list("-created_date", 150) },
   { key: ["purchases"], fn: () => base44.entities.Purchase.list("-created_date", 100) },
   { key: ["expenses"], fn: () => base44.entities.Expense.list("-created_date", 100) },
+  { key: ["loans"], fn: () => base44.entities.Loan.list() },
 ];
+
+/** Secondary — deferred until browser is idle. */
+const TIER_DEFERRED = [];
 
 let prefetchStarted = false;
 
@@ -34,21 +34,10 @@ export function warmCriticalCaches() {
 
   const stale = 5 * 60 * 1000;
 
+  // Fetch all immediately so dashboard renders instantly on login
   TIER_CRITICAL.forEach((q) => {
     prefetchOne(q, stale).catch(() => {});
   });
-
-  const runDeferred = () => {
-    TIER_DEFERRED.forEach((q, i) => {
-      setTimeout(() => prefetchOne(q, stale).catch(() => {}), i * 400);
-    });
-  };
-
-  if (typeof requestIdleCallback !== "undefined") {
-    requestIdleCallback(runDeferred, { timeout: 3000 });
-  } else {
-    setTimeout(runDeferred, 800);
-  }
 }
 
 /** Preload route chunk + route-specific queries on hover/focus. */

@@ -447,8 +447,35 @@
   }
 
   /* Ensure touch targets have instant visual feedback */
-  button:active, a:active, [role="button"]:active {
+  button:active, a:active, [role="button"]:active, .touch-active:active {
     transition-duration: 0.05s !important;
+  }
+
+  .native-ripple {
+    position: relative;
+    overflow: hidden;
+    transform: translate3d(0,0,0);
+  }
+  .native-ripple::after {
+    content: "";
+    display: block;
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    background-image: radial-gradient(circle, currentColor 10%, transparent 10.01%);
+    background-repeat: no-repeat;
+    background-position: 50%;
+    transform: scale(10,10);
+    opacity: 0;
+    transition: transform .5s, opacity 1s;
+  }
+  .native-ripple:active::after {
+    transform: scale(0,0);
+    opacity: .15;
+    transition: 0s;
   }
 }
 
@@ -840,5 +867,16 @@ input::-ms-clear {
   to {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes scan {
+  0%, 100% {
+    transform: translateY(0);
+    opacity: 0.8;
+  }
+  50% {
+    transform: translateY(194px); /* Moves laser scan line inside the 200px viewport bounding frame */
+    opacity: 1;
   }
 }

@@ -289,6 +289,20 @@ export default function Sidebar({ mobile = false, onClose, defaultCollapsed = fa
     return true;
   });
 
+  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
   return (
     <TooltipProvider delayDuration={0}>
       <aside className={cn(
@@ -308,7 +322,7 @@ export default function Sidebar({ mobile = false, onClose, defaultCollapsed = fa
         {mobile && onClose && (
           <button
             onClick={onClose}
-            className="absolute top-3 right-3 p-1.5 rounded-full hover:bg-secondary/80 bg-background border border-border/50 shadow-md z-[60]"
+            className="absolute top-[calc(var(--safe-top,12px)+8px)] right-3 p-1.5 rounded-full hover:bg-secondary/80 bg-background border border-border/50 shadow-md z-[60]"
           >
             <X className="w-4 h-4 text-muted-foreground hover:text-foreground" />
           </button>
@@ -325,16 +339,26 @@ export default function Sidebar({ mobile = false, onClose, defaultCollapsed = fa
             {collapsed ? <ChevronRight className="w-4 h-4 text-primary" /> : <ChevronLeft className="w-4 h-4 text-primary" />}
           </button>
         )}
-
+ 
         <div className="flex-1 flex flex-col w-full h-full overflow-hidden bg-transparent relative z-40">
           {/* Logo & Brand */}
           <div className={cn(
             "px-5 pb-[1px] border-b border-sidebar-border/30 shrink-0 transition-all duration-300",
-            fullHeight ? "pt-4" : "pt-[5px]",
+            mobile ? "pt-[calc(var(--safe-top,12px)+16px)]" : fullHeight ? "pt-4" : "pt-[5px]",
             collapsed ? "px-2 flex flex-col items-center" : "px-5"
           )}>
             <div className={cn("flex items-center gap-2 mb-2", collapsed && "justify-center mt-3")}>
               <span className={cn("font-black gold-text transition-all", collapsed ? "text-xl" : "text-2xl")}>{collapsed ? "EB" : "EasyBMT"}</span>
+              {!collapsed && (
+                <span className={cn(
+                  "w-2 h-2 rounded-full border border-white dark:border-slate-900 shadow-[0_0_6px_var(--color)] shrink-0",
+                  isOnline 
+                    ? "bg-emerald-500 shadow-emerald-500/50" 
+                    : "bg-amber-500 shadow-amber-500/50 animate-pulse"
+                )} 
+                title={isOnline ? "Cloud Connected" : "Local Offline Cache Enabled"}
+                />
+              )}
             </div>
             
             {!collapsed && (

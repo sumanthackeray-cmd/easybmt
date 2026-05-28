@@ -1,8 +1,12 @@
-import { lazy, Suspense, useEffect } from "react";
-import PermissionGate from "@/components/PermissionGate";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { SplashScreen } from '@capacitor/splash-screen';
+import { Capacitor } from '@capacitor/core';
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "sonner";
+import PremiumPermissionOnboarding from "@/components/PremiumPermissionOnboarding";
 import { ToastContainer } from "@/components/ui/ToastContainer";
+import SyncStatusIndicator from "@/components/SyncStatusIndicator";
 
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClientInstance } from "@/lib/query-client";
@@ -158,23 +162,51 @@ const AuthenticatedApp = () => {
 };
 
 function App() {
+  const [showPermissionsOnboarding, setShowPermissionsOnboarding] = useState(false);
+
   useEffect(() => {
     registerPopState();
+
+    // Conditionally trigger onboarding on native mobile devices for first-time launch
+    const isNative = Capacitor.isNativePlatform();
+    if (isNative) {
+      const completed = localStorage.getItem("easybmt_permissions_setup_completed");
+      if (completed !== "true") {
+        setShowPermissionsOnboarding(true);
+      }
+      
+      // Hide splash screen after successful mount
+      setTimeout(() => {
+        SplashScreen.hide().catch(console.warn);
+      }, 500);
+    }
+
+    // Ultimate safety failsafe: always attempt to hide splash screen on mount to prevent any indefinite white-screen freezes
+    setTimeout(() => {
+      SplashScreen.hide().catch(() => {});
+    }, 1200);
   }, []);
 
+  if (showPermissionsOnboarding) {
+    return (
+      <PremiumPermissionOnboarding
+        onComplete={() => setShowPermissionsOnboarding(false)}
+      />
+    );
+  }
+
   return (
-    <PermissionGate>
-      <AuthProvider>
-        <QueryClientProvider client={queryClientInstance}>
-          <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-            <AuthenticatedApp />
-          </Router>
-          <ThemeSync />
-          <AppInstallPrompt />
-          <ToastContainer />
-        </QueryClientProvider>
-      </AuthProvider>
-    </PermissionGate>
+    <AuthProvider>
+      <QueryClientProvider client={queryClientInstance}>
+        <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <AuthenticatedApp />
+        </Router>
+        <ThemeSync />
+        <AppInstallPrompt />
+        <ToastContainer />
+        <SyncStatusIndicator />
+      </QueryClientProvider>
+    </AuthProvider>
   );
 }
 

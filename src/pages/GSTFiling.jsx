@@ -706,8 +706,26 @@ export default function GSTFiling() {
 
       {/* 3. TABS SYSTEM */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <div className="bg-secondary/40 border border-border/50 p-1 rounded-xl backdrop-blur-sm sticky top-0 z-10 flex overflow-x-auto scrollbar-none">
-          <TabsList className="bg-transparent border-none h-auto flex flex-nowrap gap-1">
+        <div className="bg-secondary/40 border border-border/50 p-1 rounded-xl backdrop-blur-sm sticky top-0 z-10 flex flex-col md:flex-row overflow-visible">
+          {/* Mobile Dropdown */}
+          <div className="md:hidden w-full p-1">
+            <select 
+              value={activeTab} 
+              onChange={(e) => setActiveTab(e.target.value)}
+              className="w-full bg-background border border-border rounded-lg px-3 py-2.5 text-xs font-bold focus:outline-none shadow-sm text-foreground appearance-none"
+              style={{ backgroundImage: 'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3e%3cpolyline points=\'6 9 12 15 18 9\'/%3e%3c/svg%3e")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '16px' }}
+            >
+              <option value="dashboard">📊 Compliance Hub</option>
+              <option value="filing">📂 Filing Center</option>
+              <option value="reconciliation">🔄 Smart Reconciliation</option>
+              <option value="vendors">🤝 Vendor Compliance</option>
+              <option value="notices">📅 Notices & Timeline</option>
+              <option value="audit">🛡️ Audit & Portal Logs</option>
+            </select>
+          </div>
+          
+          {/* Desktop Tabs */}
+          <TabsList className="hidden md:flex bg-transparent border-none h-auto flex-nowrap gap-1">
             {[
               { id: "dashboard", label: "📊 Compliance Hub" },
               { id: "filing", label: "📂 Filing Center" },
@@ -941,10 +959,10 @@ export default function GSTFiling() {
           
           <div className="bg-card/50 border border-border/80 rounded-xl p-5 shadow-lg space-y-6">
             <Tabs defaultValue="gstr1" className="space-y-4">
-              <TabsList className="bg-secondary/40 border border-border/80 h-auto p-1 rounded-xl">
-                <TabsTrigger value="gstr1" className="text-xs font-bold px-3 py-1.5">GSTR-1 Outward Register</TabsTrigger>
-                <TabsTrigger value="gstr3b" className="text-xs font-bold px-3 py-1.5">GSTR-3B Worksheet</TabsTrigger>
-                <TabsTrigger value="hsn" className="text-xs font-bold px-3 py-1.5">HSN Catalog Summary</TabsTrigger>
+              <TabsList className="bg-secondary/40 border border-border/80 h-auto p-1 rounded-xl flex overflow-x-auto scrollbar-none">
+                <TabsTrigger value="gstr1" className="text-xs font-bold px-3 py-1.5 whitespace-nowrap">GSTR-1 Outward Register</TabsTrigger>
+                <TabsTrigger value="gstr3b" className="text-xs font-bold px-3 py-1.5 whitespace-nowrap">GSTR-3B Worksheet</TabsTrigger>
+                <TabsTrigger value="hsn" className="text-xs font-bold px-3 py-1.5 whitespace-nowrap">HSN Catalog Summary</TabsTrigger>
               </TabsList>
 
               <TabsContent value="gstr1" className="outline-none space-y-4">

@@ -179,7 +179,22 @@ export default function ChartOfAccounts() {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <div className="flex items-center gap-1 bg-card border border-border rounded-xl p-1">
+          {/* Mobile Dropdown */}
+          <div className="md:hidden block">
+            <select
+              value={selectedType}
+              onChange={(e) => setSelectedType(e.target.value)}
+              className="bg-card border border-border rounded-lg px-2 py-1.5 text-[10px] font-black focus:outline-none text-foreground appearance-none pr-6"
+              style={{ backgroundImage: 'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3e%3cpolyline points=\'6 9 12 15 18 9\'/%3e%3c/svg%3e")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 6px center', backgroundSize: '12px' }}
+            >
+              {['All', 'Asset', 'Liability', 'Equity', 'Revenue', 'Expense'].map(t => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Desktop Tabs */}
+          <div className="hidden md:flex items-center gap-1 bg-card border border-border rounded-xl p-1">
             {['All', 'Asset', 'Liability', 'Equity', 'Revenue', 'Expense'].map(t => (
               <button
                 key={t}

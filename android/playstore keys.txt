@@ -1,0 +1,19 @@
+Release Keystore Generated:
+
+I ran the JDK keytool utility to generate your custom keystore file my-release-key.jks in your android/app folder.
+Keystore Details:
+File Location: android/app/my-release-key.jks
+Keystore Password: easybmt123
+Key Alias: easybmt-alias
+Key Password: easybmt123
+Validity: 10,000 days (approx. 27 years)
+Automated Signing Configuration:
+
+I updated your android/app/build.gradle file to define a release signing configuration pointing directly to your new my-release-key.jks keystore.
+The release build type will now automatically sign both the .apk and .aab outputs natively using this key on every compile!
+Started Play Store Release Compilation:
+
+Launched a clean Gradle task to package and build:
+Signed .apk: Output will be saved under android/app/build/outputs/apk/release/
+Signed .aab (Android App Bundle): Output will be saved under android/app/build/outputs/bundle/release/
+The build compiles in the background as task task-1369.

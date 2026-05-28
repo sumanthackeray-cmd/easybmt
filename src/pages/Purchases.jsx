@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Search, ShoppingCart, X, CreditCard, ChevronRight } from "lucide-react";
+import { Plus, Search, ShoppingCart, X, CreditCard, ChevronRight, Camera } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { fetchGSTDetailsFromPortal } from "@/services/gst/gst-lookup";
 import OCRUpload from "@/components/purchases/OCRUpload";
@@ -14,6 +14,7 @@ import { ProductForm } from "@/components/inventory/ProductForm";
 import BarcodeGenerator from "@/components/inventory/BarcodeGenerator";
 import { useLanguage } from "@/lib/LanguageContext";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import CameraBarcodeScanner from "@/components/ui/CameraBarcodeScanner";
 
 function PurchaseForm({ open, onOpenChange, purchase, products, purchases, onSave, businessType }) {
   const { t } = useLanguage();
@@ -38,6 +39,7 @@ function PurchaseForm({ open, onOpenChange, purchase, products, purchases, onSav
   const [barcodeProduct, setBarcodeProduct] = useState(null);
   const [focusedVendorInput, setFocusedVendorInput] = useState(false);
   const [prefilledBarcode, setPrefilledBarcode] = useState("");
+  const [isCameraScannerOpen, setIsCameraScannerOpen] = useState(false);
   
   const queryClient = useQueryClient();
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -375,6 +377,18 @@ function PurchaseForm({ open, onOpenChange, purchase, products, purchases, onSav
                   </div>
                 )}
               </div>
+
+              {/* Camera Barcode Scanner Trigger Button */}
+              <Button
+                type="button"
+                onClick={() => setIsCameraScannerOpen(true)}
+                variant="outline"
+                className="h-10 w-10 rounded-xl bg-amber-500/10 border-amber-500/30 text-amber-500 hover:bg-amber-500 hover:text-black flex items-center justify-center shrink-0 shadow-sm transition-all"
+                title="Scan Barcode via Camera"
+              >
+                <Camera className="w-4 h-4" />
+              </Button>
+
               <Button 
                 type="button" 
                 onClick={() => {
@@ -594,6 +608,13 @@ function PurchaseForm({ open, onOpenChange, purchase, products, purchases, onSav
             businessType={businessType}
           />
         )}
+        
+        {/* Camera Barcode Scanner Modal */}
+        <CameraBarcodeScanner
+          open={isCameraScannerOpen}
+          onOpenChange={setIsCameraScannerOpen}
+          onScan={setSearch}
+        />
         
         {/* Instant Barcode Printing Dialog */}
         {barcodeProduct && (

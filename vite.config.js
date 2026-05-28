@@ -89,11 +89,25 @@ export default defineConfig({
     build: {
         target: 'esnext',
         minify: 'terser',
+        cssMinify: true,
         terserOptions: {
             compress: {
                 drop_console: false, // DO NOT drop console to allow debugging
                 drop_debugger: true,
+                passes: 2
             },
+            format: {
+                comments: false,
+            }
+        },
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    vendor: ['react', 'react-dom', 'react-router-dom'],
+                    firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage'],
+                    ui: ['lucide-react', 'framer-motion', 'recharts']
+                }
+            }
         }
     }
 });

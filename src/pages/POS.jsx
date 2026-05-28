@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useBackButton } from "@/hooks/useBackButton";
 import { useShopSettings } from "@/hooks/useShopSettings";
+import CameraBarcodeScanner from "@/components/ui/CameraBarcodeScanner";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -177,6 +178,7 @@ function POSContent() {
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [barcodeMode, setBarcodeMode] = useState(true);
+  const [isCameraScannerOpen, setIsCameraScannerOpen] = useState(false);
   const [cart, setCart] = useState([]);
   const [visibleCount, setVisibleCount] = useState(50);
   const cartEndRef = useRef(null);
@@ -468,6 +470,7 @@ function POSContent() {
   useBackButton(() => setIsShiftCloseDialogOpen(false), isShiftCloseDialogOpen);
   useBackButton(() => setIsShiftOpenDialogOpen(false), isShiftOpenDialogOpen);
   useBackButton(() => setIsCounterPickerOpen(false), isCounterPickerOpen);
+  useBackButton(() => setIsCameraScannerOpen(false), isCameraScannerOpen);
 
   const handleApplyProductDetails = (product, selectedRate, selectedBatch, selectedExpiry) => {
     setCart(prev => {
@@ -964,6 +967,17 @@ function POSContent() {
       }
     }
   }, [searchTerm, barcodeMode, barcodeMap, shopSettings?.barcode_quick_billing]);
+
+  const handleCameraScan = (barcode) => {
+    if (!barcode) return;
+    const match = barcodeMap.get(barcode.trim());
+    if (match) {
+      handleProductClick(match);
+      toast.success(`Scanned: ${match.name}`);
+    } else {
+      toast.error(`Product not found for barcode: ${barcode}`);
+    }
+  };
 
   // ULTRA-PERFORMANCE: Debounce search for rendering
   useEffect(() => {
@@ -1514,7 +1528,7 @@ function POSContent() {
 
           createdInvoice = await base44.entities.Invoice.create(sanitizedInvoice);
 
-          if (shopSettings.id && !shopSettings.id.startsWith("seed") && seqKeyToUpdate) {
+          if (shopSettings.id && seqKeyToUpdate) {
             await base44.entities.ShopSettings.update(shopSettings.id, { [seqKeyToUpdate]: seqInfo.nextSeq });
           }
 
@@ -2184,6 +2198,8 @@ function POSContent() {
               })()}
             </div>
 
+
+
             {/* Quick Add Product Button */}
             <button
               type="button"
@@ -2772,7 +2788,7 @@ function POSContent() {
 
           {/* Checkout & Pricing Controls */}
           {/* Checkout & Pricing Controls */}
-          <div className="p-2 border-t border-slate-200 dark:border-slate-800/80 bg-slate-50 dark:bg-slate-950 flex flex-col gap-2 shrink-0">
+          <div className="p-2 pb-[70px] md:pb-2 border-t border-slate-200 dark:border-slate-800/80 bg-slate-50 dark:bg-slate-950 flex flex-col gap-2 shrink-0">
             
             {/* Discounter selector */}
             <div className="bg-white dark:bg-slate-900/50 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-850/50 flex flex-col sm:flex-row sm:gap-2 items-start sm:items-center justify-between shadow-sm min-h-[44px] shrink-0 gap-2 mt-1">
@@ -3168,22 +3184,31 @@ function POSContent() {
 
       {/* THERMAL RECEIPT PRINT MODAL */}
         <Dialog open={isPrintOpen} onOpenChange={setIsPrintOpen}>
-          <DialogContent className={`bg-white text-slate-950 p-0 gap-0 rounded-2xl overflow-hidden transition-all duration-200 flex flex-col ${selectedPrintSize === "80mm" ? "sm:max-w-[420px]" : "sm:max-w-[360px]"} max-h-[92vh] print:max-h-none print:overflow-visible print:bg-transparent print:border-none print:shadow-none`}>
+          <DialogContent showClose={false} className={`bg-white text-slate-950 p-0 gap-0 rounded-2xl overflow-hidden transition-all duration-200 flex flex-col ${selectedPrintSize === "80mm" ? "sm:max-w-[420px]" : "sm:max-w-[360px]"} max-h-[90vh] mt-4 sm:mt-0 print:max-h-none print:overflow-visible print:bg-transparent print:border-none print:shadow-none`}>
             {/*  Top controls bar  always visible  */}
-            <div className="flex gap-2 px-4 pt-4 pb-3 border-b border-gray-100 print:hidden shrink-0">
+            <div className="flex gap-2 px-4 pt-5 pb-3 border-b border-gray-100 print:hidden shrink-0 items-center justify-between">
+              <div className="flex gap-2 flex-1">
+                <button 
+                  type="button" 
+                  onClick={() => setSelectedPrintSize("58mm")}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${selectedPrintSize === "58mm" ? "bg-slate-900 text-white shadow" : "bg-gray-100 hover:bg-gray-200 text-gray-800"}`}
+                >
+                  58mm Roll
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => setSelectedPrintSize("80mm")}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${selectedPrintSize === "80mm" ? "bg-slate-900 text-white shadow" : "bg-gray-100 hover:bg-gray-200 text-gray-800"}`}
+                >
+                  80mm Roll
+                </button>
+              </div>
               <button 
-                type="button" 
-                onClick={() => setSelectedPrintSize("58mm")}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${selectedPrintSize === "58mm" ? "bg-slate-900 text-white shadow" : "bg-gray-100 hover:bg-gray-200 text-gray-800"}`}
+                onClick={() => setIsPrintOpen(false)}
+                className="w-8 h-8 shrink-0 flex items-center justify-center rounded-full bg-red-50 text-red-600 hover:bg-red-100 transition-colors ml-1"
+                aria-label="Close"
               >
-                58mm Roll
-              </button>
-              <button 
-                type="button" 
-                onClick={() => setSelectedPrintSize("80mm")}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${selectedPrintSize === "80mm" ? "bg-slate-900 text-white shadow" : "bg-gray-100 hover:bg-gray-200 text-gray-800"}`}
-              >
-                80mm Roll
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -3318,6 +3343,13 @@ function POSContent() {
             </div>
           </DialogContent>
         </Dialog>
+
+      {/* CAMERA BARCODE SCANNER MODAL */}
+      <CameraBarcodeScanner
+        open={isCameraScannerOpen}
+        onOpenChange={setIsCameraScannerOpen}
+        onScan={handleCameraScan}
+      />
 
 
       {/* GROCERY WEIGHT ENTRY MODAL */}

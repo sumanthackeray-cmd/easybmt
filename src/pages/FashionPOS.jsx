@@ -758,7 +758,7 @@ export default function FashionPOS() {
         savedInvoice = await base44.entities.Invoice.create(invoicePayload);
 
         const seqKeyToUpdate = `${seqInfo.prefixKey}_seq`;
-        if (shopSettings.id && !shopSettings.id.startsWith("seed")) {
+        if (shopSettings.id) {
           await base44.entities.ShopSettings.update(shopSettings.id, { [seqKeyToUpdate]: seqInfo.nextSeq });
         }
 
@@ -1720,22 +1720,31 @@ export default function FashionPOS() {
 
       {/* THERMAL RECEIPT PRINT MODAL FOR B2C */}
       <Dialog open={isCheckoutSuccessOpen} onOpenChange={setIsCheckoutSuccessOpen}>
-        <DialogContent className={`bg-white text-slate-950 p-0 gap-0 rounded-2xl overflow-hidden transition-all duration-200 flex flex-col ${selectedPrintSize === "80mm" ? "sm:max-w-[420px]" : "sm:max-w-[360px]"} max-h-[92vh] print:max-h-none print:overflow-visible print:bg-transparent print:border-none print:shadow-none`}>
+        <DialogContent showClose={false} className={`bg-white text-slate-950 p-0 gap-0 rounded-2xl overflow-hidden transition-all duration-200 flex flex-col ${selectedPrintSize === "80mm" ? "sm:max-w-[420px]" : "sm:max-w-[360px]"} max-h-[90vh] mt-4 sm:mt-0 print:max-h-none print:overflow-visible print:bg-transparent print:border-none print:shadow-none`}>
           {/*  Top controls bar  always visible  */}
-          <div className="flex gap-2 px-4 pt-4 pb-3 border-b border-gray-100 print:hidden shrink-0">
+          <div className="flex gap-2 px-4 pt-5 pb-3 border-b border-gray-100 print:hidden shrink-0 items-center justify-between">
+            <div className="flex gap-2 flex-1">
+              <button 
+                type="button" 
+                onClick={() => setSelectedPrintSize("58mm")}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${selectedPrintSize === "58mm" ? "bg-slate-900 text-white shadow" : "bg-gray-100 hover:bg-gray-200 text-gray-800"}`}
+              >
+                58mm Roll
+              </button>
+              <button 
+                type="button" 
+                onClick={() => setSelectedPrintSize("80mm")}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${selectedPrintSize === "80mm" ? "bg-slate-900 text-white shadow" : "bg-gray-100 hover:bg-gray-200 text-gray-800"}`}
+              >
+                80mm Roll
+              </button>
+            </div>
             <button 
-              type="button" 
-              onClick={() => setSelectedPrintSize("58mm")}
-              className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${selectedPrintSize === "58mm" ? "bg-slate-900 text-white shadow" : "bg-gray-100 hover:bg-gray-200 text-gray-800"}`}
+              onClick={() => setIsCheckoutSuccessOpen(false)}
+              className="w-8 h-8 shrink-0 flex items-center justify-center rounded-full bg-red-50 text-red-600 hover:bg-red-100 transition-colors ml-1"
+              aria-label="Close"
             >
-              58mm Roll
-            </button>
-            <button 
-              type="button" 
-              onClick={() => setSelectedPrintSize("80mm")}
-              className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${selectedPrintSize === "80mm" ? "bg-slate-900 text-white shadow" : "bg-gray-100 hover:bg-gray-200 text-gray-800"}`}
-            >
-              80mm Roll
+              <X className="w-4 h-4" />
             </button>
           </div>
 

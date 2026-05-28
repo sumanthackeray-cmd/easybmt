@@ -592,7 +592,7 @@ INSTRUCTIONS FOR AI:
           }}
         >
           {/* Top Sticky Header */}
-          <div className="flex items-center justify-between px-4 py-3 ai-header-premium shrink-0">
+          <div className={`flex items-center justify-between px-4 pb-3 ai-header-premium shrink-0 ${isMobile || isFullscreen ? "pt-[calc(var(--safe-top,12px)+12px)]" : "pt-3"}`}>
             <div className="flex items-center gap-3">
               {/* Bot Avatar Icon - Guaranteed high contrast purple color */}
               <div 

@@ -122,6 +122,20 @@ export default function MobileNav() {
     };
   }, []);
 
+  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
   return (
     <>
       {/* Top bar for mobile */}
@@ -135,6 +149,14 @@ export default function MobileNav() {
       >
         <div className="flex items-center gap-2">
           <span className={cn("font-black gold-text", isPOS ? "text-xl" : "text-base")}>EasyBMT</span>
+          <span className={cn(
+            "w-2 h-2 rounded-full border border-white dark:border-slate-900 shadow-[0_0_6px_var(--color)] shrink-0",
+            isOnline 
+              ? "bg-emerald-500 shadow-emerald-500/50" 
+              : "bg-amber-500 shadow-amber-500/50 animate-pulse"
+          )} 
+          title={isOnline ? "Cloud Connected" : "Local Offline Cache Enabled"}
+          />
         </div>
         <div className="flex items-center gap-[5px]">
           <button 

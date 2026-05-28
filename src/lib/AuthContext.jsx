@@ -546,13 +546,42 @@ export const AuthProvider = ({ children }) => {
                      };
                    });
                  } else {
-                   const fPerm = freshPerms.find(p => p.user_id === fUserRecord.id) || freshPerms.find(p => p.role_id === fUserRecord.role_id) || { permissions: matchingPermission.permissions };
+                   const fPerm = freshPerms.find(p => p.user_id === fUserRecord.id) || freshPerms.find(p => p.role_id === fUserRecord.role_id) || {
+                     permissions: {
+                       dashboard: { view: true, view_staff: true, ai_insights: false, own_data_only: false },
+                       pos: { view: true, create: true, void: false, discount: false, override: false, shift: true, reprint: true, drawer: true },
+                       invoices: { view: true, edit: false, delete: false, export: false },
+                       customers: { view: true, create: true, edit: false, delete: false, loyalty: false },
+                       waybills: { view: false, create: false, cancel: false, export: false },
+                       purchases: { view: false, create: false, approve: false, execute_grn: false, vendor_manage: false },
+                       inventory: { view: true, create: false, edit: false, delete: false, adjust: false, barcode: false },
+                       stock_transfer: { view: false, create: false, approve: false },
+                       inventory_sync: { view: false, execute: false },
+                       warehouse: { view: false, manage_layout: false, receive: false, dispatch: false, audit: false },
+                       accounting: { view: false, create_journal: false, day_closing: false, audit_trail: false },
+                       expenses: { view: false, create: false, approve: false, delete: false },
+                       loans: { view: false, apply: false, pay: false },
+                       gst_filing: { view: false, reconcile: false, export: false },
+                       hrms_dashboard: { view: false },
+                       hrms_employees: { view: false, create: false, edit: false, delete: false },
+                       hrms_org: { view: false, manage: false },
+                       hrms_salary: { view: false, process: false, approve: false },
+                       hrms_mes: { view: true, attendance: true },
+                       hrms_compliance: { view: false, upload: false, filing: false },
+                       reports: { view: false, export: false, profit_margins: false, ai_copilot: false },
+                       branches: { view: false, create: false, edit: false, delete: false },
+                       audit_logs: { view: false },
+                       finance: { view: false, cashbook: false, bank_reconciliation: false, pl_statement: false, balance_sheet: false }
+                     }
+                   };
                    fPermissions = fPerm.permissions;
                  }
 
                  const fSfa = fIsOwnerOrCeo ? {
                    fields: { purchase_price: true, profit_margin: true, salary: true }
-                 } : (freshSfa.find(s => s.user_id === fUserRecord.id) || freshSfa.find(s => s.role_id === fUserRecord.role_id) || { fields: matchingSensitiveFieldAccess.fields });
+                 } : (freshSfa.find(s => s.user_id === fUserRecord.id) || freshSfa.find(s => s.role_id === fUserRecord.role_id) || {
+                   fields: { purchase_price: false, profit_margin: false, salary: false }
+                 });
 
                  const fRbacProfile = {
                    role_name: fRole.role_name,

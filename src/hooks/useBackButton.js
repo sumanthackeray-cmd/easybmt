@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { App as CapacitorApp } from '@capacitor/app';
+import { Dialog } from '@capacitor/dialog';
 
 // Global stack of active back-button interceptors
 const backStack = [];
@@ -31,15 +32,29 @@ export const registerPopState = () => {
     if (!capacitorListenerAdded) {
       capacitorListenerAdded = true;
       try {
-        CapacitorApp.addListener('backButton', ({ canGoBack }) => {
+        CapacitorApp.addListener('backButton', async ({ canGoBack }) => {
           if (backStack.length > 0) {
             window.history.back();
           } else {
             const path = window.location.pathname;
-            if (path !== '/' && path !== '/pos' && path !== '/login') {
-              window.history.back();
+            if (path !== '/' && path !== '/pos' && path !== '/login' && path !== '/dashboard') {
+              if (canGoBack) {
+                window.history.back();
+              } else {
+                window.location.href = "/";
+              }
             } else {
-              CapacitorApp.exitApp();
+              // On main screens, prompt before exiting
+              const { value } = await Dialog.confirm({
+                title: 'Exit EasyBMT?',
+                message: 'Are you sure you want to close the app?',
+                okButtonTitle: 'Exit',
+                cancelButtonTitle: 'Cancel'
+              });
+              
+              if (value) {
+                CapacitorApp.exitApp();
+              }
             }
           }
         });
