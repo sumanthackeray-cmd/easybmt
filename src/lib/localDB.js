@@ -17,7 +17,8 @@ import {
   setDoc,
   limit,
   orderBy,
-  writeBatch
+  writeBatch,
+  onSnapshot
 } from "firebase/firestore";
 
 import { db as firestoreDb, auth } from "@/api/firebase";
@@ -1041,7 +1042,6 @@ export async function startRealtimeInventorySync() {
   const ctx = await getCompanyContext();
   if (!ctx.companyId) return;
 
-  const { onSnapshot, collection } = await import("firebase/firestore");
   const colRef = collection(firestoreDb, "companies", ctx.companyId, "inventory");
   
   inventoryUnsubscribe = onSnapshot(colRef, async (snapshot) => {

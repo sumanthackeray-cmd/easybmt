@@ -36,6 +36,15 @@ service cloud.firestore {
         get(/databases/$(database)/documents/companies/$(companyId)).data.owner_uid == request.auth.uid;
     }
 
+    // Helper to check if a user document exists and retrieve it
+    function hasUserDoc(companyId) {
+      return exists(/databases/$(database)/documents/companies/$(companyId)/users/$(request.auth.uid));
+    }
+
+    function getUserDoc(companyId) {
+      return get(/databases/$(database)/documents/companies/$(companyId)/users/$(request.auth.uid)).data;
+    }
+
     // Is the user a member of this tenant?
     // Fast-path: JWT claim. Fallback: Firestore user doc (for owner without claims propagated yet)
     function isMemberOfTenant(companyId) {
@@ -43,24 +52,20 @@ service cloud.firestore {
     }
 
     // Is the user an ACTIVE member? Inactive (deactivated) members are blocked.
+    // PRIMARY: Firestore user doc. FALLBACK: JWT claim.
     function isActiveMember(companyId) {
       return isAuthenticated() && (
-        // Fast path: JWT claim (always present after login)
-        (hasCompanyClaim(companyId) && request.auth.token.is_active == true) ||
-        // Owner bypass (owner cannot deactivate themselves via admin panel)
         isOwnerViaDoc(companyId) ||
-        // Fallback: Firestore user doc active check
-        (exists(/databases/$(database)/documents/companies/$(companyId)/users/$(request.auth.uid)) &&
-         get(/databases/$(database)/documents/companies/$(companyId)/users/$(request.auth.uid)).data.is_active == true)
+        (hasUserDoc(companyId) ? getUserDoc(companyId).is_active == true : (hasCompanyClaim(companyId) && request.auth.token.is_active == true))
       );
     }
 
-    // Role check via JWT claim (fast path) or Firestore user doc (fallback)
+    // Role check via Firestore user doc (primary) or JWT claim (fallback)
     function hasRole(companyId, roleName) {
       return isAuthenticated() && (
-        (hasCompanyClaim(companyId) && request.auth.token.role == roleName) ||
-        (exists(/databases/$(database)/documents/companies/$(companyId)/users/$(request.auth.uid)) &&
-         get(/databases/$(database)/documents/companies/$(companyId)/users/$(request.auth.uid)).data.role_id == 'role-' + roleName)
+        hasUserDoc(companyId) ? 
+          (getUserDoc(companyId).role_id == 'role-' + roleName || getUserDoc(companyId).role == roleName) : 
+          (hasCompanyClaim(companyId) && request.auth.token.role == roleName)
       );
     }
 

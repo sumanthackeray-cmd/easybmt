@@ -1,5 +1,5 @@
 import { getAuth, signInWithEmailAndPassword, signOut, setPersistence, browserLocalPersistence } from "firebase/auth";
-import { getDoc, doc, setDoc, updateDoc, collection } from "firebase/firestore";
+import { getDoc, doc, setDoc, updateDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { db, auth } from "@/firebase/config";
 import { base44 } from "@/api/base44Client";
 
@@ -220,7 +220,6 @@ export async function ownerLogin(emailOrCompanyId, password) {
 
   if (!companyId || role !== "owner") {
     // Fallback: Check if there is a company where owner_uid == userCredential.user.uid
-    const { query, collection, where, getDocs } = await import("firebase/firestore");
     const companiesRef = collection(db, "companies");
     
     let q = query(companiesRef, where("owner_uid", "==", userCredential.user.uid));

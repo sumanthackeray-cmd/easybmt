@@ -6,6 +6,7 @@ import { auth, db } from '@/api/firebase';
 import { initTokenManager } from '@/firebase/tokenManager';
 import { debounce } from '@/lib/performance/debounce';
 import { initializeLocalArchitecture, stopSyncEngine } from '@/lib/localDB';
+import { doc, getDoc, query, collection, where, getDocs, onSnapshot } from 'firebase/firestore';
 
 
 const AuthContext = createContext();
@@ -148,7 +149,6 @@ export const AuthProvider = ({ children }) => {
           }
 
           if (!resolvedCompanyId) {
-            const { doc, getDoc, query, collection, where, getDocs } = await import("firebase/firestore");
             
             // Fallback 1: Safely validate existing cached company_id for this specific user
             const cachedCompanyId = localStorage.getItem('company_id');
@@ -423,7 +423,6 @@ export const AuthProvider = ({ children }) => {
 
           // Setup real-time listener for the RBAC configurations
           if (resolvedCompanyId) {
-            const { onSnapshot, doc } = await import("firebase/firestore");
             
             const handleRbacUpdate = async () => {
               try {

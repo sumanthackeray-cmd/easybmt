@@ -4,7 +4,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { Mail, Lock, Building2, User, Loader2, ShieldAlert, ArrowRight, Eye, EyeOff, ShieldCheck, Moon, Sun } from "lucide-react";
 import { staffLogin, ownerLogin, prePopulateLoginCache } from "@/modules/auth/authService";
 import { setPersistence, browserLocalPersistence } from "firebase/auth";
-import { auth } from "@/firebase/config";
+import { auth, db } from "@/firebase/config";
+import { query, collection, where, getDocs } from "firebase/firestore";
 import { base44 } from "@/api/base44Client";
 
 export default function Login() {
@@ -77,8 +78,6 @@ export default function Login() {
     try {
       await setPersistence(auth, browserLocalPersistence);
       const user = await base44.auth.loginWithProvider("google", null);
-      const { query, collection, where, getDocs } = await import("firebase/firestore");
-      const { db } = await import("@/firebase/config");
       let q = query(collection(db, "companies"), where("owner_uid", "==", user.uid));
       let querySnapshot = await getDocs(q);
       

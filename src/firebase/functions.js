@@ -1,7 +1,7 @@
 import { getFunctions, httpsCallable } from "firebase/functions";
 import app, { auth, db, firebaseConfig } from "./config";
 import { initializeApp as initSecondaryApp, deleteApp } from "firebase/app";
-import { createUserWithEmailAndPassword, signOut, getAuth } from "firebase/auth";
+import { createUserWithEmailAndPassword, signOut, getAuth, signInWithEmailAndPassword } from "firebase/auth";
 import { doc, writeBatch, serverTimestamp, collection, getDoc, getDocs, query, where, updateDoc, setDoc, deleteDoc } from "firebase/firestore";
 
 const functions = getFunctions(app);
@@ -80,7 +80,6 @@ export const registerTenant = async (data) => {
       } catch (authErr) {
         if (authErr.code === "auth/email-already-in-use" || authErr.message?.includes("email-already-in-use")) {
           // Attempt to sign in to verify their password and reuse the account
-          const { signInWithEmailAndPassword } = await import("firebase/auth");
           try {
             const userCredential = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
             ownerUser = userCredential.user;
