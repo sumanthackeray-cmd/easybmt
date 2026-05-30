@@ -23,5 +23,11 @@ service firebase.storage {
     match /users/{userId}/{allPaths=**} {
       allow read, write: if isAuthenticated() && request.auth.uid == userId;
     }
+
+    // Allow public read access to software installer builds (write restricted to admin console)
+    match /releases/{allPaths=**} {
+      allow read: if true;
+      allow write: if false;
+    }
   }
 }
