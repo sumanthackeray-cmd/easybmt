@@ -724,6 +724,59 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* GOOGLE FIREBASE DATA LOCKER BANNER */}
+      <section className="w-full !py-16 bg-[#0B0F19] dark:bg-[#070A10] text-white border-y border-white/5 relative overflow-hidden text-left">
+        <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-[#FFCA28]/5 rounded-full blur-[100px] mix-blend-screen pointer-events-none translate-x-1/3 -translate-y-1/4"></div>
+        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-[#0284C7]/5 rounded-full blur-[120px] mix-blend-screen pointer-events-none -translate-x-1/4 translate-y-1/3"></div>
+        
+        <div className="max-w-[1240px] !mx-auto !px-6 flex flex-col lg:flex-row items-center justify-between gap-8 relative z-10">
+          <div className="flex flex-col md:flex-row items-center md:items-start gap-6 text-center md:text-left max-w-3xl">
+            {/* Locker SVG Icon */}
+            <div className="w-16 h-16 shrink-0 rounded-2xl bg-[#0284C7]/10 border border-[#0284C7]/20 flex items-center justify-center shadow-lg relative animate-pulse">
+              <svg className="w-8 h-8 text-[#0284C7]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              <div className="absolute -top-1.5 -right-1.5 bg-[#FF5252] text-[9px] font-black px-1.5 py-0.5 rounded-full border border-[#0B0F19] shadow">
+                100% SECURE
+              </div>
+            </div>
+            
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
+                <span className="text-[10px] uppercase font-extrabold tracking-widest text-[#FFCA28] bg-[#FFCA28]/10 px-2.5 py-1 rounded-md">Enterprise Security</span>
+                <span className="text-[10px] uppercase font-extrabold tracking-widest text-[#0284C7] bg-[#0284C7]/10 px-2.5 py-1 rounded-md">Real-Time Isolation</span>
+              </div>
+              <h2 className="text-2xl md:text-3xl font-black tracking-tight text-white !m-0 !p-0">Your Data is 100% Protected inside <span className="text-[#FFCA28]">Google Firebase</span> Cloud Vault</h2>
+              <p className="text-slate-400 text-sm leading-relaxed !m-0 !p-0 !mt-2">
+                We prioritize your financial records security above all else. EasyBMT is backed by <strong>Google Firebase Secure Servers</strong>. Every tax invoice generated, stock count logged, and journal ledger entered is instantly encrypted and replicated across Google’s highly resilient, military-grade cloud architecture.
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex flex-col items-center gap-4 bg-white/5 border border-white/10 !p-6 rounded-2xl backdrop-blur-md hover:bg-white/10 transition-all duration-300 w-full lg:w-auto shrink-0 max-w-sm">
+            <div className="flex items-center gap-3">
+              {/* Firebase Vector Icon */}
+              <svg className="w-8 h-8 fill-none" viewBox="0 0 24 24">
+                <path d="M3.89 19.3L12 .45l8.11 18.85L12 23.55 3.89 19.3z" fill="#0284C7" opacity="0.15" />
+                <path d="M20.07 18.93L12.16.45c-.08-.18-.34-.18-.42 0L3.83 18.93c-.06.14.02.3.17.32l8 1c.03 0 .07 0 .1-.01l7.8-1.2c.15-.02.23-.19.17-.331z" fill="#FFCA28" />
+                <path d="M12.16.45c-.08-.18-.34-.18-.42 0L3.83 18.93c-.06.14.02.3.17.32l8 1c.03 0 .07 0 .1-.01V.45z" fill="#F57C00" />
+                <path d="M17.43 19.31l-5.18-9.82c-.08-.15-.3-.15-.38 0L9.04 14.8l-2.61-4.99c-.08-.16-.31-.16-.39.01L3.9 19.31c-.06.13.04.28.18.27l13.16-1c.15-.01.24-.16.19-.27z" fill="#FF5252" />
+              </svg>
+              <div className="text-left">
+                <div className="text-[9px] text-slate-400 font-extrabold uppercase tracking-widest leading-none">Security Infrastructure</div>
+                <div className="text-lg font-black text-white leading-tight">Google Firebase</div>
+              </div>
+            </div>
+            <div className="w-full h-px bg-white/10 my-1"></div>
+            <ul className="text-xs text-slate-300 space-y-2 list-none !m-0 !p-0 w-full text-left">
+              <li className="flex items-center gap-2 before:hidden"><span className="text-[#FFCA28]">✔</span> 256-bit SSL Database Partitioning</li>
+              <li className="flex items-center gap-2 before:hidden"><span className="text-[#FFCA28]">✔</span> Automatic Real-Time Database Isolation</li>
+              <li className="flex items-center gap-2 before:hidden"><span className="text-[#FFCA28]">✔</span> 99.9% Uptime with Auto Failover Recovery</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
       {/* CTA BAND */}
       <section className="cta-band">
         <h2>Ready to scale your business operations?</h2>
