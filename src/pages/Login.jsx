@@ -278,53 +278,60 @@ export default function Login() {
             </p>
           </div>
 
-          <div className="mt-8 grid grid-cols-2 gap-4">
-            <div className="bg-white dark:bg-white/5 border border-[#E8E8EE] dark:border-white/10 p-5 rounded-2xl dark:backdrop-blur-sm hover:bg-[#FAFAFA] dark:hover:bg-white/10 transition-colors shadow-sm dark:shadow-none">
-              <h3 className="text-3xl font-black text-[#111118] dark:text-white transition-colors duration-300">10K<span className="text-[#E8721C]">+</span></h3>
-              <p className="text-[#7A7A8C] dark:text-white/60 text-sm font-medium mt-1 transition-colors duration-300">Registered Users</p>
+          <div className="mt-8 grid grid-cols-3 gap-3">
+            <div className="bg-white dark:bg-white/5 border border-[#E8E8EE] dark:border-white/10 p-4 rounded-xl dark:backdrop-blur-sm hover:bg-[#FAFAFA] dark:hover:bg-white/10 transition-all duration-300 shadow-sm dark:shadow-none text-left">
+              <h3 className="text-2xl font-black text-[#111118] dark:text-white transition-colors duration-300">10K<span className="text-[#E8721C]">+</span></h3>
+              <p className="text-[#7A7A8C] dark:text-white/60 text-[11px] font-bold leading-tight mt-1 transition-colors duration-300">Registered Users</p>
             </div>
-            <div className="bg-white dark:bg-white/5 border border-[#E8E8EE] dark:border-white/10 p-5 rounded-2xl dark:backdrop-blur-sm hover:bg-[#FAFAFA] dark:hover:bg-white/10 transition-colors shadow-sm dark:shadow-none">
-              <h3 className="text-3xl font-black text-[#111118] dark:text-white transition-colors duration-300">₹1000Cr<span className="text-[#E8721C]">+</span></h3>
-              <p className="text-[#7A7A8C] dark:text-white/60 text-sm font-medium mt-1 transition-colors duration-300">Billed Monthly</p>
+            
+            <div className="bg-white dark:bg-white/5 border border-[#E8E8EE] dark:border-white/10 p-4 rounded-xl dark:backdrop-blur-sm hover:bg-[#FAFAFA] dark:hover:bg-white/10 transition-all duration-300 shadow-sm dark:shadow-none text-left">
+              <h3 className="text-2xl font-black text-[#111118] dark:text-white transition-colors duration-300">₹1000Cr<span className="text-[#E8721C]">+</span></h3>
+              <p className="text-[#7A7A8C] dark:text-white/60 text-[11px] font-bold leading-tight mt-1 transition-colors duration-300">Billed Monthly</p>
             </div>
-            <div className="bg-white dark:bg-white/5 border border-[#E8E8EE] dark:border-white/10 p-5 rounded-2xl dark:backdrop-blur-sm hover:bg-[#FAFAFA] dark:hover:bg-white/10 transition-colors shadow-sm dark:shadow-none col-span-2 flex items-center justify-between">
+            
+            <div className="bg-white dark:bg-white/5 border border-[#E8E8EE] dark:border-white/10 p-4 rounded-xl dark:backdrop-blur-sm hover:bg-[#FAFAFA] dark:hover:bg-white/10 transition-all duration-300 shadow-sm dark:shadow-none text-left flex flex-col justify-between">
               <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-3xl font-black text-[#111118] dark:text-white transition-colors duration-300">4.9</h3>
-                  <div className="flex gap-1">
+                <div className="flex items-center gap-1">
+                  <h3 className="text-2xl font-black text-[#111118] dark:text-white transition-colors duration-300">4.9</h3>
+                  <div className="flex gap-0.5 animate-pulse">
                     {[1, 2, 3, 4, 5].map((star) => (
-                      <svg key={star} className="w-5 h-5 text-[#E8721C] fill-[#E8721C]" viewBox="0 0 24 24">
+                      <svg key={star} className="w-3 h-3 text-[#E8721C] fill-[#E8721C]" viewBox="0 0 24 24">
                         <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                       </svg>
                     ))}
                   </div>
                 </div>
-                <p className="text-[#7A7A8C] dark:text-white/60 text-sm font-medium mt-1 transition-colors duration-300">App Rating across all platforms</p>
+                <p className="text-[#7A7A8C] dark:text-white/60 text-[11px] font-bold leading-tight mt-1 transition-colors duration-300">Rating across platforms</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Desktop Left-Side Firebase Secure Card */}
-        <div className="mt-8 bg-white dark:bg-white/5 border border-[#E8E8EE] dark:border-white/10 p-5 rounded-2xl dark:backdrop-blur-sm shadow-sm dark:shadow-none relative z-10">
-          <div className="flex items-center gap-3">
-            <svg className="w-8 h-8 fill-none" viewBox="0 0 24 24">
-              <path d="M3.89 19.3L12 .45l8.11 18.85L12 23.55 3.89 19.3z" fill="#0284C7" opacity="0.1" />
-              <path d="M20.07 18.93L12.16.45c-.08-.18-.34-.18-.42 0L3.83 18.93c-.06.14.02.3.17.32l8 1c.03 0 .07 0 .1-.01l7.8-1.2c.15-.02.23-.19.17-.331z" fill="#FFCA28" />
-              <path d="M12.16.45c-.08-.18-.34-.18-.42 0L3.83 18.93c-.06.14.02.3.17.32l8 1c.03 0 .07 0 .1-.01V.45z" fill="#F57C00" />
-              <path d="M17.43 19.31l-5.18-9.82c-.08-.15-.3-.15-.38 0L9.04 14.8l-2.61-4.99c-.08-.16-.31-.16-.39.01L3.9 19.31c-.06.13.04.28.18.27l13.16-1c.15-.01.24-.16.19-.27z" fill="#FF5252" />
-            </svg>
-            <div className="text-left">
-              <div className="text-[9px] text-[#7A7A8C] dark:text-white/40 font-extrabold uppercase tracking-widest leading-none">Security Infrastructure</div>
-              <div className="text-lg font-black text-[#111118] dark:text-white leading-tight">Google Firebase</div>
+        <div className="mt-6 bg-[#0B0F19] dark:bg-white/5 border border-[#1E293B] dark:border-white/10 p-4 rounded-xl shadow-md text-white relative z-10">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <svg className="w-7 h-7 fill-none" viewBox="0 0 24 24">
+                <path d="M3.89 19.3L12 .45l8.11 18.85L12 23.55 3.89 19.3z" fill="#0284C7" opacity="0.1" />
+                <path d="M20.07 18.93L12.16.45c-.08-.18-.34-.18-.42 0L3.83 18.93c-.06.14.02.3.17.32l8 1c.03 0 .07 0 .1-.01l7.8-1.2c.15-.02.23-.19.17-.331z" fill="#FFCA28" />
+                <path d="M12.16.45c-.08-.18-.34-.18-.42 0L3.83 18.93c-.06.14.02.3.17.32l8 1c.03 0 .07 0 .1-.01V.45z" fill="#F57C00" />
+                <path d="M17.43 19.31l-5.18-9.82c-.08-.15-.3-.15-.38 0L9.04 14.8l-2.61-4.99c-.08-.16-.31-.16-.39.01L3.9 19.31c-.06.13.04.28.18.27l13.16-1c.15-.01.24-.16.19-.27z" fill="#FF5252" />
+              </svg>
+              <div className="text-left">
+                <div className="text-[8px] text-slate-400 font-extrabold uppercase tracking-widest leading-none">Powered & Secured By</div>
+                <div className="text-sm font-black text-white leading-tight">Google Firebase Cloud</div>
+              </div>
             </div>
+            <span className="text-[8px] font-black bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded uppercase tracking-wider">
+              100% PROTECTED
+            </span>
           </div>
-          <div className="w-full h-px bg-slate-100 dark:bg-white/10 my-2.5"></div>
-          <ul className="text-xs text-[#7A7A8C] dark:text-white/70 space-y-2 list-none !m-0 !p-0 w-full text-left">
-            <li className="flex items-center gap-2 before:hidden"><span className="text-[#E8721C] font-bold">✔</span> 256-bit SSL Database Partitioning</li>
-            <li className="flex items-center gap-2 before:hidden"><span className="text-[#E8721C] font-bold">✔</span> Automatic Real-Time Database Isolation</li>
-            <li className="flex items-center gap-2 before:hidden"><span className="text-[#E8721C] font-bold">✔</span> 99.9% Uptime with Auto Failover Recovery</li>
-          </ul>
+          
+          <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-white/10 text-[9px] text-slate-300">
+            <div className="flex items-center gap-1"><span className="text-[#FFCA28] font-bold">✔</span> SSL Encrypted</div>
+            <div className="flex items-center gap-1"><span className="text-[#FFCA28] font-bold">✔</span> Real-Time Sync</div>
+            <div className="flex items-center gap-1"><span className="text-[#FFCA28] font-bold">✔</span> Auto Backups</div>
+          </div>
         </div>
 
         <div className="relative z-10 flex items-center justify-between text-[#7A7A8C] dark:text-white/50 text-sm font-medium transition-colors duration-300">
