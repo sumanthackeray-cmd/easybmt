@@ -931,9 +931,9 @@ exports.generateSoftwareDownloadUrl = functions.https.onCall(async (data, contex
   // 2. Fetch configured software links from Environment Variables
   const softwareVersion = process.env.SOFTWARE_CURRENT_VERSION || "v1.4.2";
   const downloadLinks = {
-    windows: process.env.SOFTWARE_DOWNLOAD_WINDOWS || "https://storage.googleapis.com/easybmt-builds/releases/v1.4.2/EasyBMT-Setup-1.4.2.exe",
-    mac: process.env.SOFTWARE_DOWNLOAD_MAC || "https://storage.googleapis.com/easybmt-builds/releases/v1.4.2/EasyBMT-1.4.2.dmg",
-    linux: process.env.SOFTWARE_DOWNLOAD_LINUX || "https://storage.googleapis.com/easybmt-builds/releases/v1.4.2/EasyBMT-1.4.2.AppImage"
+    windows: process.env.SOFTWARE_DOWNLOAD_WINDOWS || "https://firebasestorage.googleapis.com/v0/b/vogats-firebase-studio.firebasestorage.app/o/releases%2Fv1.4.2%2FEasyBMT-Setup-1.4.2.exe?alt=media",
+    mac: process.env.SOFTWARE_DOWNLOAD_MAC || "https://firebasestorage.googleapis.com/v0/b/vogats-firebase-studio.firebasestorage.app/o/releases%2Fv1.4.2%2FEasyBMT-1.4.2.dmg?alt=media",
+    linux: process.env.SOFTWARE_DOWNLOAD_LINUX || "https://firebasestorage.googleapis.com/v0/b/vogats-firebase-studio.firebasestorage.app/o/releases%2Fv1.4.2%2FEasyBMT-1.4.2.AppImage?alt=media"
   };
 
   const selectedLink = downloadLinks[os.toLowerCase()];

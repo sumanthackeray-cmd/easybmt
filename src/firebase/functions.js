@@ -590,9 +590,9 @@ export const generateSoftwareDownloadUrl = async (data) => {
     const { os } = data;
     const softwareVersion = "v1.4.2";
     const downloadLinks = {
-      windows: "https://storage.googleapis.com/easybmt-builds/releases/v1.4.2/EasyBMT-Setup-1.4.2.exe",
-      mac: "https://storage.googleapis.com/easybmt-builds/releases/v1.4.2/EasyBMT-1.4.2.dmg",
-      linux: "https://storage.googleapis.com/easybmt-builds/releases/v1.4.2/EasyBMT-1.4.2.AppImage"
+      windows: "https://firebasestorage.googleapis.com/v0/b/vogats-firebase-studio.firebasestorage.app/o/releases%2Fv1.4.2%2FEasyBMT-Setup-1.4.2.exe?alt=media",
+      mac: "https://firebasestorage.googleapis.com/v0/b/vogats-firebase-studio.firebasestorage.app/o/releases%2Fv1.4.2%2FEasyBMT-1.4.2.dmg?alt=media",
+      linux: "https://firebasestorage.googleapis.com/v0/b/vogats-firebase-studio.firebasestorage.app/o/releases%2Fv1.4.2%2FEasyBMT-1.4.2.AppImage?alt=media"
     };
     return {
       success: true,
