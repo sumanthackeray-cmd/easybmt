@@ -2,10 +2,11 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import SEO from "@/components/SEO";
-import { Check, Zap, Star, Building2, Gift, Crown } from "lucide-react";
+import { Check, Zap, Star, Building2, Gift, Crown, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
 import OfferDialog from "@/components/subscription/OfferDialog";
+import siteLogo from "../../assets/site_logo.png";
 import "../landing.css";
 
 const PLANS = [
@@ -18,7 +19,7 @@ const PLANS = [
     stamp: "3 Months Completely Free"
   },
   {
-    id: "starter", name: "Starter", price: 499, period: "month", icon: Zap,
+    id: "starter", name: "Starter", price: 299, yearly_price: 249, period: "month", icon: Zap,
     color: "text-info", border: "border-info/30", badge: "Special Offer",
     description: "Perfect for small shops & kirana stores",
     features: ["500 invoices/month", "Unlimited products", "GST billing & reports", "Barcode printing", "E-Waybill support", "WhatsApp sharing"],
@@ -72,6 +73,19 @@ export default function Landing() {
       navigate("/dashboard", { replace: true });
     }
   }, [user, navigate]);
+
+  // Show offer popup automatically after 5 seconds on the landing page
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setOfferPopup(prev => {
+        if (!prev.isOpen) {
+          return { isOpen: true, planName: "Starter" };
+        }
+        return prev;
+      });
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     const observer = new IntersectionObserver((entries) => {
@@ -260,7 +274,7 @@ export default function Landing() {
       {/* NAV */}
       <nav className="landing-nav">
         <Link to="/" className="nav-logo">
-          <img src="/site_logo.png" alt="EasyBMT Site Logo" className="landing-site-logo" />
+          <img src={siteLogo} alt="EasyBMT Site Logo" className="landing-site-logo" />
         </Link>
         <ul className="nav-links">
           <li><a href="#features">Features</a></li>
@@ -588,7 +602,7 @@ export default function Landing() {
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-x-5 gap-y-8 xl:gap-y-5 !mt-8">
             {PLANS.map((plan) => {
               const Icon = plan.icon;
-              const finalPrice = plan.price > 0 ? Math.round(plan.price * (1 - discount)) : 0;
+              const finalPrice = plan.price > 0 ? (billing === "yearly" && plan.yearly_price ? plan.yearly_price : Math.round(plan.price * (1 - discount))) : 0;
               return (
                 <div key={plan.id} className={cn(
                   "relative bg-card border rounded-2xl !p-6 flex flex-col gap-4 transition-all duration-300 text-left !overflow-visible",
@@ -596,7 +610,7 @@ export default function Landing() {
                   plan.highlighted && "ring-2 ring-primary/40 shadow-[0_0_32px_hsla(36,90%,55%,0.12)] scale-[1.01]"
                 )}>
                   {plan.badge && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20">
+                    <div className="absolute top-[2px] left-1/2 -translate-x-1/2 z-20">
                       <span className={cn("!px-4 !py-1 rounded-full text-[11px] font-extrabold whitespace-nowrap shadow-sm",
                         plan.highlighted ? "gold-gradient text-black" : "!bg-white !text-[#7C3AED] border !border-[#7C3AED]/30"
                       )}>{plan.badge}</span>
@@ -824,10 +838,16 @@ export default function Landing() {
         <div className="footer-col">
           <h4>Company</h4>
           <ul>
-            <li><a href="mailto:support@easybmt.com">Support Helpline</a></li>
-            <li><Link to="/register">Partner Program</Link></li>
-            <li><Link to="/login">Client Portal</Link></li>
+            <li><Link to="/contact">Contact Us</Link></li>
+            <li><Link to="/about">About Us</Link></li>
           </ul>
+          <div className="mt-5 flex flex-col gap-2">
+            <span className="text-[11px] text-slate-400 font-bold tracking-wider uppercase">Subscribe</span>
+            <div className="flex items-center h-9">
+              <input type="email" placeholder="Email address" className="h-full px-3 py-1.5 rounded-l-lg bg-slate-800 border border-slate-700 text-sm w-full focus:outline-none focus:border-primary text-white placeholder-slate-500" />
+              <button className="h-full px-4 bg-primary text-black font-black rounded-r-lg text-sm hover:opacity-90 transition-opacity">Go</button>
+            </div>
+          </div>
         </div>
       </footer>
       <div className="footer-bottom">

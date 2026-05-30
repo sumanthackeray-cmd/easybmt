@@ -20,7 +20,7 @@ const PLANS = [
     stamp: "3 Months Completely Free"
   },
   {
-    id: "starter", name: "Starter", price: 499, period: "month", icon: Zap,
+    id: "starter", name: "Starter", price: 299, yearly_price: 249, period: "month", icon: Zap,
     color: "text-info", border: "border-info/30", badge: "Special Offer",
     description: "Perfect for small shops & kirana stores",
     features: ["500 invoices/month", "Unlimited products", "GST billing & reports", "Barcode printing", "E-Waybill support", "WhatsApp sharing"],
@@ -129,7 +129,7 @@ export default function Pricing() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
           {PLANS.map((plan) => {
             const Icon = plan.icon;
-            const finalPrice = plan.price > 0 ? Math.round(plan.price * (1 - discount)) : 0;
+            const finalPrice = plan.price > 0 ? (billing === "yearly" && plan.yearly_price ? plan.yearly_price : Math.round(plan.price * (1 - discount))) : 0;
             return (
               <div key={plan.id} className={cn(
                 "relative bg-card border rounded-2xl p-6 flex flex-col gap-6 transition-all duration-300 hover:shadow-xl",
@@ -137,7 +137,7 @@ export default function Pricing() {
                 plan.highlighted && "ring-2 ring-primary/50 shadow-[0_8px_30px_hsla(36,90%,55%,0.15)] scale-[1.02] md:-translate-y-2"
               )}>
                 {plan.badge && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20">
+                  <div className="absolute top-[2px] left-1/2 -translate-x-1/2 z-20">
                     <span className={cn("px-4 py-1 rounded-full text-[11px] font-extrabold whitespace-nowrap shadow-sm",
                       plan.highlighted ? "gold-gradient text-black" : "bg-primary/20 text-primary border border-primary/30"
                     )}>{plan.badge}</span>

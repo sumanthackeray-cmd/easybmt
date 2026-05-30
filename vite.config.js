@@ -26,7 +26,8 @@ export default defineConfig({
         VitePWA({
             registerType: 'autoUpdate',
             devOptions: {
-                enabled: false,
+                enabled: true,
+                type: 'module'
             },
             workbox: {
                 globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,json,woff2}'],
@@ -63,14 +64,16 @@ export default defineConfig({
                 start_url: "/",
                 icons: [
                     {
-                        src: '/vite.svg',
+                        src: '/favicon.png',
                         sizes: '192x192',
-                        type: 'image/svg+xml'
+                        type: 'image/png',
+                        purpose: 'any maskable'
                     },
                     {
-                        src: '/vite.svg',
+                        src: '/favicon.png',
                         sizes: '512x512',
-                        type: 'image/svg+xml'
+                        type: 'image/png',
+                        purpose: 'any maskable'
                     }
                 ]
             }

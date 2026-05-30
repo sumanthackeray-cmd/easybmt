@@ -20,12 +20,12 @@ const PLANS = [
     stamp: "3 Months Completely Free"
   },
   {
-    id: "starter", name: "Starter", price: 499, period: "month", icon: Zap,
+    id: "starter", name: "Starter", price: 299, yearly_price: 249, period: "month", icon: Zap,
     color: "text-info", border: "border-info/30", badge: "Special Offer",
     description: "Perfect for small shops & kirana stores",
     features: ["500 invoices/month", "Unlimited products", "GST billing & reports", "Barcode printing", "E-Waybill support", "WhatsApp sharing"],
     cta: "Get Starter", ctaClass: "bg-info text-white hover:bg-info/90",
-    razorpay_monthly: 49900, razorpay_yearly: 479040,
+    razorpay_monthly: 29900, razorpay_yearly: 298800,
     stamp: "3 Months Completely Free"
   },
   {
@@ -121,7 +121,7 @@ export default function Subscription() {
 
     const user = await base44.auth.me();
     const amountPaise = billing === "yearly" ? plan.razorpay_yearly : plan.razorpay_monthly;
-    const finalAmount = Math.round(amountPaise * (1 - discount));
+    const finalAmount = amountPaise; // Fix: amountPaise already has yearly discount applied inside plan.razorpay_yearly
 
     const options = {
       key: "rzp_test_placeholder", // Replace with actual Razorpay key
@@ -247,7 +247,7 @@ export default function Subscription() {
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {PLANS.map((plan) => {
           const Icon = plan.icon;
-          const finalPrice = plan.price > 0 ? Math.round(plan.price * (1 - discount)) : 0;
+          const finalPrice = plan.price > 0 ? (billing === "yearly" && plan.yearly_price ? plan.yearly_price : Math.round(plan.price * (1 - discount))) : 0;
           const isCurrent = sub?.plan === plan.id && (sub?.status === "active" || sub?.status === "trial");
           return (
             <div key={plan.id} className={cn(
@@ -257,14 +257,14 @@ export default function Subscription() {
               isCurrent && "ring-2 ring-success/50"
             )}>
               {plan.badge && !isCurrent && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20">
+                <div className="absolute top-[2px] left-1/2 -translate-x-1/2 z-20">
                   <span className={cn("px-3 py-1 rounded-full text-[11px] font-extrabold whitespace-nowrap",
                     plan.highlighted ? "gold-gradient text-black" : "bg-purple/20 text-purple border border-purple/30"
                   )}>{plan.badge}</span>
                 </div>
               )}
               {isCurrent && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                <div className="absolute top-[2px] left-1/2 -translate-x-1/2 z-20">
                   <span className="px-3 py-1 rounded-full text-[11px] font-extrabold bg-success/20 text-success border border-success/30">✓ Current Plan</span>
                 </div>
               )}

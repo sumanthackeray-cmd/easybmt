@@ -7,12 +7,12 @@ import confetti from "canvas-confetti";
 export default function OfferDialog({ isOpen, onClose, onProceed, planName }) {
   useEffect(() => {
     if (isOpen) {
-      // Flower rain when popup opens
-      const end = Date.now() + 1.5 * 1000;
-      const colors = ['#ff0a54', '#ff477e', '#ff7096', '#ff85a1', '#fbb1bd', '#f9bec7', '#ffd700'];
+      // 5-second 3D Flower rain when popup opens
+      const end = Date.now() + 5 * 1000;
+      const colors = ['#ff0a54', '#ff477e', '#ff7096', '#ff85a1', '#fbb1bd', '#f9bec7', '#ffd700', '#E8870A'];
       const frame = () => {
-        confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 }, colors, zIndex: 10000 });
-        confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 }, colors, zIndex: 10000 });
+        confetti({ particleCount: 5, angle: 60, spread: 80, origin: { x: 0 }, colors, shapes: ['square', 'circle'], scalar: 1.2, zIndex: 100000 });
+        confetti({ particleCount: 5, angle: 120, spread: 80, origin: { x: 1 }, colors, shapes: ['square', 'circle'], scalar: 1.2, zIndex: 100000 });
         if (Date.now() < end) requestAnimationFrame(frame);
       };
       frame();
@@ -21,11 +21,8 @@ export default function OfferDialog({ isOpen, onClose, onProceed, planName }) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[425px] overflow-hidden border-2 border-primary/30 bg-gradient-to-br from-background via-background to-primary/5">
+      <DialogContent className="w-[95%] max-w-[400px] sm:max-w-[425px] overflow-hidden border-2 border-primary/30 bg-white dark:bg-[#0f172a] shadow-2xl p-5 sm:p-6 rounded-2xl mx-auto">
         <DialogHeader className="text-center pt-2">
-          <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4 border border-primary/20 shadow-inner">
-            <Sparkles className="w-8 h-8 text-primary animate-pulse" />
-          </div>
           <DialogTitle className="text-3xl font-black text-center mb-2">
             Limited Time <span className="gold-text">Offer!</span>
           </DialogTitle>
@@ -51,7 +48,7 @@ export default function OfferDialog({ isOpen, onClose, onProceed, planName }) {
           >
             Claim Offer & Continue
           </Button>
-          <Button variant="ghost" onClick={onClose} className="w-full text-muted-foreground font-bold hover:bg-secondary/50">
+          <Button onClick={onClose} className="w-full text-slate-700 dark:text-slate-300 font-bold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
             Maybe Later
           </Button>
         </DialogFooter>

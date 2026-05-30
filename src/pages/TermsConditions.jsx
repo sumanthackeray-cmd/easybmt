@@ -1,5 +1,7 @@
 import React from 'react';
 import { Scale, ShieldCheck } from 'lucide-react';
+import { Link } from "react-router-dom";
+import siteLogo from "../../assets/site_logo.png";
 
 export default function TermsConditions() {
   return (
@@ -291,6 +293,39 @@ export default function TermsConditions() {
       `}</style>
 
       <div className="terms-page dark:bg-[#0B0B0F] dark:text-[#D1D1E0]">
+
+        {/* Self-contained sticky header — same as Contact/About pages */}
+        <header className="w-full py-3 px-4 md:px-10 flex items-center justify-between sticky top-0 z-50 bg-white/90 dark:bg-[#0B0B0F]/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-sm">
+          <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity shrink-0">
+            <img src={siteLogo} alt="EasyBMT" className="h-7 w-auto object-contain" />
+          </Link>
+
+          {/* Desktop nav links */}
+          <nav className="hidden md:flex items-center gap-1 text-sm font-medium text-slate-600 dark:text-slate-400">
+            <a href="/#features" className="px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors">Features</a>
+            <a href="/#modules" className="px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors">ERP Modules</a>
+            <a href="/#pricing" className="px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors">Pricing</a>
+            <a href="/#faq" className="px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors">FAQ</a>
+          </nav>
+
+          {/* Right buttons */}
+          <div className="flex items-center gap-2 shrink-0">
+            <a
+              href="https://wa.me/919801200459"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden sm:flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
+              title="WhatsApp Support"
+            >
+              <svg className="w-7 h-7 fill-[#25D366]" viewBox="0 0 24 24">
+                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.835-4.655c1.667.988 3.536 1.509 5.44 1.51h.005c5.447 0 9.878-4.427 9.882-9.875.002-2.639-1.02-5.12-2.881-6.983C17.472 2.133 15.001.993 12.01.993c-5.452 0-9.887 4.434-9.89 9.885-.001 1.942.5 3.826 1.455 5.503L2.512 21.147l4.38-1.802zm12.822-6.09c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.149-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+              </svg>
+            </a>
+            <Link to="/login" className="hidden sm:inline-flex items-center px-3 py-1.5 border border-slate-300 dark:border-slate-700 rounded-lg text-sm font-semibold text-slate-700 dark:text-slate-300 hover:border-amber-500 hover:text-amber-600 dark:hover:text-amber-400 transition-colors bg-white dark:bg-transparent">Login</Link>
+            <Link to="/register" className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-bold text-white bg-amber-500 hover:bg-amber-600 transition-colors shadow-sm shadow-amber-200 dark:shadow-none">Free Trial →</Link>
+          </div>
+        </header>
+
         <div className="terms-container">
           {/* HERO */}
           <div className="bg-gradient-to-br from-[#fff7ed] to-[#ffffff] dark:from-[#111118] dark:to-[#111118] border border-[#fed7aa] dark:border-[#2A2A3A] flex flex-col lg:flex-row items-center justify-between gap-8 relative overflow-hidden py-12 md:py-20 px-6 md:px-12 lg:px-16 rounded-[32px] mb-12 shadow-sm">

@@ -51,13 +51,13 @@ const SEO = ({
     },
     "offers": {
       "@type": "Offer",
-      "price": "499",
+      "price": "299",
       "priceCurrency": "INR",
       "description": "Premium GST billing, ERP, dual-mode POS and automated GSTR calculations for modern Indian shops.",
       "priceSpecification": {
         "@type": "UnitPriceSpecification",
         "priceType": "Subscription",
-        "price": "499",
+        "price": "299",
         "priceCurrency": "INR",
         "referenceQuantity": {
           "@type": "QuantitativeValue",

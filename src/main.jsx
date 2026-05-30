@@ -81,17 +81,12 @@ if (typeof window !== 'undefined') {
   });
 }
 
-if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+if ('serviceWorker' in navigator) {
   try {
     registerSW({ immediate: true });
   } catch (e) {
     errorLogger.captureError('ServiceWorkerRegister', e);
   }
-}
-if (import.meta.env.DEV && 'serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then((regs) => {
-    regs.forEach((r) => r.unregister());
-  });
 }
 
 // ── Root Error Boundary (catches entire React tree) ───────────────────────

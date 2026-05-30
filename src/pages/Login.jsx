@@ -308,29 +308,29 @@ export default function Login() {
         </div>
 
         {/* Desktop Left-Side Firebase Secure Card */}
-        <div className="mt-6 bg-[#0B0F19] dark:bg-white/5 border border-[#1E293B] dark:border-white/10 p-4 rounded-xl shadow-md text-white relative z-10">
+        <div className="mt-6 bg-gradient-to-br from-orange-500/10 to-amber-500/5 dark:from-orange-500/10 dark:to-amber-500/5 backdrop-blur-md border border-orange-500/20 dark:border-orange-500/20 p-4 rounded-xl shadow-[0_4px_20px_rgba(249,115,22,0.1)] relative z-10">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <svg className="w-7 h-7 fill-none" viewBox="0 0 24 24">
+              <svg className="w-7 h-7 fill-none drop-shadow-sm" viewBox="0 0 24 24">
                 <path d="M3.89 19.3L12 .45l8.11 18.85L12 23.55 3.89 19.3z" fill="#0284C7" opacity="0.1" />
                 <path d="M20.07 18.93L12.16.45c-.08-.18-.34-.18-.42 0L3.83 18.93c-.06.14.02.3.17.32l8 1c.03 0 .07 0 .1-.01l7.8-1.2c.15-.02.23-.19.17-.331z" fill="#FFCA28" />
                 <path d="M12.16.45c-.08-.18-.34-.18-.42 0L3.83 18.93c-.06.14.02.3.17.32l8 1c.03 0 .07 0 .1-.01V.45z" fill="#F57C00" />
                 <path d="M17.43 19.31l-5.18-9.82c-.08-.15-.3-.15-.38 0L9.04 14.8l-2.61-4.99c-.08-.16-.31-.16-.39.01L3.9 19.31c-.06.13.04.28.18.27l13.16-1c.15-.01.24-.16.19-.27z" fill="#FF5252" />
               </svg>
               <div className="text-left">
-                <div className="text-[8px] text-slate-400 font-extrabold uppercase tracking-widest leading-none">Powered & Secured By</div>
-                <div className="text-sm font-black text-white leading-tight">Google Firebase Cloud</div>
+                <div className="text-[8px] text-orange-600/80 dark:text-orange-400/80 font-extrabold uppercase tracking-widest leading-none mb-0.5">Powered & Secured By</div>
+                <div className="text-sm font-black text-slate-900 dark:text-white leading-tight">Google Firebase Cloud</div>
               </div>
             </div>
-            <span className="text-[8px] font-black bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded uppercase tracking-wider">
+            <span className="text-[8px] font-black bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded uppercase tracking-wider shadow-sm">
               100% PROTECTED
             </span>
           </div>
           
-          <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-white/10 text-[9px] text-slate-300">
-            <div className="flex items-center gap-1"><span className="text-[#FFCA28] font-bold">✔</span> SSL Encrypted</div>
-            <div className="flex items-center gap-1"><span className="text-[#FFCA28] font-bold">✔</span> Real-Time Sync</div>
-            <div className="flex items-center gap-1"><span className="text-[#FFCA28] font-bold">✔</span> Auto Backups</div>
+          <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-orange-500/10 dark:border-orange-500/20 text-[9px] text-slate-700 dark:text-slate-300 font-medium">
+            <div className="flex items-center gap-1"><span className="text-orange-500 font-bold">✔</span> SSL Encrypted</div>
+            <div className="flex items-center gap-1"><span className="text-orange-500 font-bold">✔</span> Real-Time Sync</div>
+            <div className="flex items-center gap-1"><span className="text-orange-500 font-bold">✔</span> Auto Backups</div>
           </div>
         </div>
 

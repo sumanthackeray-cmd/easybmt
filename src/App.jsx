@@ -35,6 +35,8 @@ import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsConditions from "@/pages/TermsConditions";
 import Pricing from "@/pages/Pricing";
 import Landing from "@/pages/Landing";
+import Contact from "@/pages/Contact";
+import About from "@/pages/About";
 
 // Lazy Loaded Routes (Code Split for sub-100ms loading)
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
@@ -89,7 +91,7 @@ const AuthenticatedApp = () => {
     }
   }, [user, authChecked, companyId]);
 
-  const isPublicRoute = ['/', '/login', '/register', '/forgot-password', '/reset-password', '/unauthorized', '/onboarding', '/privacy', '/terms', '/pricing'].includes(window.location.pathname.replace(/\/$/, '')) || window.location.pathname === '/';
+  const isPublicRoute = ['/', '/login', '/register', '/forgot-password', '/reset-password', '/unauthorized', '/onboarding', '/privacy', '/terms', '/pricing', '/contact', '/about'].includes(window.location.pathname.replace(/\/$/, '')) || window.location.pathname === '/';
 
   if ((isLoadingPublicSettings || isLoadingAuth) && !isPublicRoute) {
     return (
@@ -124,6 +126,8 @@ const AuthenticatedApp = () => {
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/terms" element={<TermsConditions />} />
         <Route path="/pricing" element={<Pricing />} />
+        <Route path="/contact" element={<Contact />} />
+        <Route path="/about" element={<About />} />
 
         <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
           <Route path="/pos" element={<PageRouteGuard pageKey="pos"><POS /></PageRouteGuard>} />

@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Plus, RefreshCw } from "lucide-react";
 import { useState, useEffect } from "react";
+import DownloadButton from "@/components/DownloadButton";
 
 export default function DashboardShell({ children, startDate, endDate, onDateChange, onRefresh, isRefreshing }) {
   const { user } = useAuth();
@@ -79,6 +80,7 @@ export default function DashboardShell({ children, startDate, endDate, onDateCha
           >
             <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin text-primary" : "text-muted-foreground"}`} />
           </Button>
+          <DownloadButton />
           <Link to="/invoices" className="hidden md:block">
             <Button className="gold-gradient text-black font-bold gap-2 text-sm h-9 hover:scale-105 transition-transform shadow-md shadow-amber-500/20">
               <Plus className="w-4 h-4" /> {language === "hi" ? "नया बिल बनाएँ" : "New Invoice"}

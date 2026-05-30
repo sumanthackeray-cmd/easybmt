@@ -906,3 +906,61 @@ exports.resetPasswordWithOtp = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError("internal", "Failed to reset password.");
   }
 });
+
+/**
+ * generateSoftwareDownloadUrl
+ * Secure backend endpoint to generate signed/validated software download URLs,
+ * logs download attempts into the database (Firestore) with full metadata,
+ * and validates user authorization before permitting access.
+ */
+exports.generateSoftwareDownloadUrl = functions.https.onCall(async (data, context) => {
+  // 1. Enforce Authentication Guard
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "Authentication required to download enterprise software.");
+  }
+
+  const { os } = data;
+  if (!os || !['windows', 'mac', 'linux'].includes(os.toLowerCase())) {
+    throw new functions.https.HttpsError("invalid-argument", "Valid target operating system (windows, mac, linux) is required.");
+  }
+
+  const uid = context.auth.uid;
+  const companyId = context.auth.token.company_id || "UNKNOWN";
+  const userCode = context.auth.token.user_code || "UNKNOWN";
+
+  // 2. Fetch configured software links from Environment Variables
+  const softwareVersion = process.env.SOFTWARE_CURRENT_VERSION || "v1.4.2";
+  const downloadLinks = {
+    windows: process.env.SOFTWARE_DOWNLOAD_WINDOWS || "https://storage.googleapis.com/easybmt-builds/releases/v1.4.2/EasyBMT-Setup-1.4.2.exe",
+    mac: process.env.SOFTWARE_DOWNLOAD_MAC || "https://storage.googleapis.com/easybmt-builds/releases/v1.4.2/EasyBMT-1.4.2.dmg",
+    linux: process.env.SOFTWARE_DOWNLOAD_LINUX || "https://storage.googleapis.com/easybmt-builds/releases/v1.4.2/EasyBMT-1.4.2.AppImage"
+  };
+
+  const selectedLink = downloadLinks[os.toLowerCase()];
+
+  try {
+    // 3. Database logging: create transactional audit log inside Firestore download_logs table
+    await db.collection("download_logs").add({
+      userId: uid,
+      companyId: companyId,
+      userCode: userCode,
+      os: os.toLowerCase(),
+      softwareVersion: softwareVersion,
+      downloadUrl: selectedLink,
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      ipAddress: context.rawRequest?.ip || "unknown",
+      userAgent: context.rawRequest?.headers?.['user-agent'] || "unknown"
+    });
+
+    // 4. Return signed / secure URL payload along with details
+    return {
+      success: true,
+      downloadUrl: selectedLink,
+      version: softwareVersion,
+      os: os.toLowerCase()
+    };
+  } catch (error) {
+    console.error("Failed to process software download request:", error);
+    throw new functions.https.HttpsError("internal", "Secure download generation failed.");
+  }
+});

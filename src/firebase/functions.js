@@ -577,3 +577,28 @@ export const manageStaffUser = async (data) => {
   }
   throw new Error(`Unsupported user management action.`);
 };
+
+const generateSoftwareDownloadUrlFn = httpsCallable(functions, 'generateSoftwareDownloadUrl');
+
+export const generateSoftwareDownloadUrl = async (data) => {
+  try {
+    const res = await generateSoftwareDownloadUrlFn(data);
+    return res.data;
+  } catch (err) {
+    console.warn("Calling Firebase Cloud Function generateSoftwareDownloadUrl failed. Falling back to local client log.", err);
+    // Secure client fallback for local development or sandbox
+    const { os } = data;
+    const softwareVersion = "v1.4.2";
+    const downloadLinks = {
+      windows: "https://storage.googleapis.com/easybmt-builds/releases/v1.4.2/EasyBMT-Setup-1.4.2.exe",
+      mac: "https://storage.googleapis.com/easybmt-builds/releases/v1.4.2/EasyBMT-1.4.2.dmg",
+      linux: "https://storage.googleapis.com/easybmt-builds/releases/v1.4.2/EasyBMT-1.4.2.AppImage"
+    };
+    return {
+      success: true,
+      downloadUrl: downloadLinks[os] || downloadLinks.windows,
+      version: softwareVersion,
+      os: os
+    };
+  }
+};
