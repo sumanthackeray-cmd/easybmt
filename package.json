@@ -1,11 +1,14 @@
 {
   "name": "base44-app",
   "private": true,
+  "description": "EasyBMT - GST Billing & POS Software",
   "version": "0.0.0",
   "type": "module",
+  "main": "src/electron.cjs",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:electron": "electron-builder build --win",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
@@ -106,6 +109,10 @@
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
     "baseline-browser-mapping": "^2.8.32",
+    "electron": "^42.3.0",
+    "electron-builder": "^26.8.1",
+    "electron-packager": "^17.1.2",
+    "electron-winstaller": "^5.4.0",
     "eslint": "^9.19.0",
     "eslint-plugin-react": "^7.37.4",
     "eslint-plugin-react-hooks": "^5.0.0",
@@ -119,5 +126,27 @@
     "vite": "^6.1.0",
     "vite-plugin-image-optimizer": "^2.0.3",
     "vite-plugin-pwa": "^1.3.0"
+  },
+  "build": {
+    "appId": "com.easybmt.app",
+    "productName": "EasyBMT",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "public/favicon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "EasyBMT"
+    },
+    "files": [
+      "src/electron.cjs",
+      "dist/**/*"
+    ]
   }
 }

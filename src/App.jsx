@@ -11,7 +11,11 @@ import { toast } from "@/lib/toast";
 
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClientInstance } from "@/lib/query-client";
-import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom";
+import { BrowserRouter, HashRouter, Route, Routes, Navigate } from "react-router-dom";
+
+// Use HashRouter in Electron (file:// protocol), BrowserRouter for web
+const isElectron = window.location.protocol === 'file:';
+const Router = isElectron ? HashRouter : BrowserRouter;
 import PageNotFound from "./lib/PageNotFound";
 import { AuthProvider, useAuth } from "@/lib/AuthContext";
 import UserNotRegisteredError from "@/components/UserNotRegisteredError";
@@ -91,7 +95,8 @@ const AuthenticatedApp = () => {
     }
   }, [user, authChecked, companyId]);
 
-  const isPublicRoute = ['/', '/login', '/register', '/forgot-password', '/reset-password', '/unauthorized', '/onboarding', '/privacy', '/terms', '/pricing', '/contact', '/about'].includes(window.location.pathname.replace(/\/$/, '')) || window.location.pathname === '/';
+  const currentPath = isElectron ? (window.location.hash.replace('#', '') || '/') : window.location.pathname;
+  const isPublicRoute = ['/', '/login', '/register', '/forgot-password', '/reset-password', '/unauthorized', '/onboarding', '/privacy', '/terms', '/pricing', '/contact', '/about'].includes(currentPath.replace(/\/$/, '')) || currentPath === '/';
 
   if ((isLoadingPublicSettings || isLoadingAuth) && !isPublicRoute) {
     return (
@@ -224,7 +229,7 @@ function App() {
     <HelmetProvider>
       <AuthProvider>
         <QueryClientProvider client={queryClientInstance}>
-          <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <Router {...(!isElectron ? { future: { v7_startTransition: true, v7_relativeSplatPath: true } } : {})}>
             <AuthenticatedApp />
           </Router>
           <ThemeSync />

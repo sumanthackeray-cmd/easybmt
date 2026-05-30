@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/lib/toast";
-import { Save, Store, CreditCard, FileText, Upload, Image, Pen, Crown, Monitor, Sun, Moon, Printer, Bluetooth, Wifi, Usb, RefreshCw, Sliders, Check, Users, Plus, Trash2, UserCheck, Shield, Lock, User, Eye, EyeOff, Building2, Cable, AlertTriangle, ShoppingCart } from "lucide-react";
+import { Save, Store, CreditCard, FileText, Upload, Download, Image, Pen, Crown, Monitor, Sun, Moon, Printer, Bluetooth, Wifi, Usb, RefreshCw, Sliders, Check, Users, Plus, Trash2, UserCheck, Shield, Lock, User, Eye, EyeOff, Building2, Cable, AlertTriangle, ShoppingCart } from "lucide-react";
 import CompanyProfile from './settings/CompanyProfile';
 import BillingSettingsTab from './settings/BillingSettingsTab';
 import SequenceSettingsTab from './settings/SequenceSettingsTab';
