@@ -102,6 +102,12 @@ service firebase.storage {
                       request.resource.contentType.matches('image/(jpeg|png|webp)');
     }
 
+    // ── Public Software Releases Folder (Write locked to Console/Admin SDK) ────
+    match /releases/{allPaths=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // ── Deny Everything Else ─────────────────────────────────────────────────
     // Default-deny — anything not matched above is blocked.
   }
