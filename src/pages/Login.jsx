@@ -305,6 +305,28 @@ export default function Login() {
           </div>
         </div>
 
+        {/* Desktop Left-Side Firebase Secure Card */}
+        <div className="mt-8 bg-white dark:bg-white/5 border border-[#E8E8EE] dark:border-white/10 p-5 rounded-2xl dark:backdrop-blur-sm shadow-sm dark:shadow-none relative z-10">
+          <div className="flex items-center gap-3">
+            <svg className="w-8 h-8 fill-none" viewBox="0 0 24 24">
+              <path d="M3.89 19.3L12 .45l8.11 18.85L12 23.55 3.89 19.3z" fill="#0284C7" opacity="0.1" />
+              <path d="M20.07 18.93L12.16.45c-.08-.18-.34-.18-.42 0L3.83 18.93c-.06.14.02.3.17.32l8 1c.03 0 .07 0 .1-.01l7.8-1.2c.15-.02.23-.19.17-.331z" fill="#FFCA28" />
+              <path d="M12.16.45c-.08-.18-.34-.18-.42 0L3.83 18.93c-.06.14.02.3.17.32l8 1c.03 0 .07 0 .1-.01V.45z" fill="#F57C00" />
+              <path d="M17.43 19.31l-5.18-9.82c-.08-.15-.3-.15-.38 0L9.04 14.8l-2.61-4.99c-.08-.16-.31-.16-.39.01L3.9 19.31c-.06.13.04.28.18.27l13.16-1c.15-.01.24-.16.19-.27z" fill="#FF5252" />
+            </svg>
+            <div className="text-left">
+              <div className="text-[9px] text-[#7A7A8C] dark:text-white/40 font-extrabold uppercase tracking-widest leading-none">Security Infrastructure</div>
+              <div className="text-lg font-black text-[#111118] dark:text-white leading-tight">Google Firebase</div>
+            </div>
+          </div>
+          <div className="w-full h-px bg-slate-100 dark:bg-white/10 my-2.5"></div>
+          <ul className="text-xs text-[#7A7A8C] dark:text-white/70 space-y-2 list-none !m-0 !p-0 w-full text-left">
+            <li className="flex items-center gap-2 before:hidden"><span className="text-[#E8721C] font-bold">✔</span> 256-bit SSL Database Partitioning</li>
+            <li className="flex items-center gap-2 before:hidden"><span className="text-[#E8721C] font-bold">✔</span> Automatic Real-Time Database Isolation</li>
+            <li className="flex items-center gap-2 before:hidden"><span className="text-[#E8721C] font-bold">✔</span> 99.9% Uptime with Auto Failover Recovery</li>
+          </ul>
+        </div>
+
         <div className="relative z-10 flex items-center justify-between text-[#7A7A8C] dark:text-white/50 text-sm font-medium transition-colors duration-300">
           <p>© {new Date().getFullYear()} Easy Business Management Tool</p>
           <div className="flex gap-4">
@@ -444,6 +466,29 @@ export default function Login() {
             </button>
           </form>
 
+          {/* Mobile-Only Firebase Secure Locker Card */}
+          <div className="lg:hidden mt-8 w-full shrink-0">
+            <div className="flex flex-col items-center gap-4 bg-[#F8FAFC] dark:bg-[#1C1C2C] border border-slate-200 dark:border-[#2C2C3C] p-5 rounded-2xl shadow-sm">
+              <div className="flex items-center gap-3">
+                <svg className="w-8 h-8 fill-none" viewBox="0 0 24 24">
+                  <path d="M3.89 19.3L12 .45l8.11 18.85L12 23.55 3.89 19.3z" fill="#0284C7" opacity="0.1" />
+                  <path d="M20.07 18.93L12.16.45c-.08-.18-.34-.18-.42 0L3.83 18.93c-.06.14.02.3.17.32l8 1c.03 0 .07 0 .1-.01l7.8-1.2c.15-.02.23-.19.17-.331z" fill="#FFCA28" />
+                  <path d="M12.16.45c-.08-.18-.34-.18-.42 0L3.83 18.93c-.06.14.02.3.17.32l8 1c.03 0 .07 0 .1-.01V.45z" fill="#F57C00" />
+                  <path d="M17.43 19.31l-5.18-9.82c-.08-.15-.3-.15-.38 0L9.04 14.8l-2.61-4.99c-.08-.16-.31-.16-.39.01L3.9 19.31c-.06.13.04.28.18.27l13.16-1c.15-.01.24-.16.19-.27z" fill="#FF5252" />
+                </svg>
+                <div className="text-left">
+                  <div className="text-[9px] text-slate-500 dark:text-slate-400 font-extrabold uppercase tracking-widest leading-none">Security Infrastructure</div>
+                  <div className="text-base font-black text-slate-900 dark:text-white leading-tight">Google Firebase</div>
+                </div>
+              </div>
+              <div className="w-full h-px bg-slate-200 dark:bg-white/10 my-1"></div>
+              <ul className="text-xs text-slate-600 dark:text-slate-300 space-y-2.5 list-none !m-0 !p-0 w-full text-left">
+                <li className="flex items-center gap-2 before:hidden"><span className="text-[#F57C00] font-bold">✔</span> 256-bit SSL Database Partitioning</li>
+                <li className="flex items-center gap-2 before:hidden"><span className="text-[#F57C00] font-bold">✔</span> Automatic Real-Time Database Isolation</li>
+                <li className="flex items-center gap-2 before:hidden"><span className="text-[#F57C00] font-bold">✔</span> 99.9% Uptime with Auto Failover Recovery</li>
+              </ul>
+            </div>
+          </div>
 
         </div>
       </div>
