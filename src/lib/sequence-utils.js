@@ -1,4 +1,4 @@
-export const getDocumentSequence = (type, shopSettings) => {
+export const getDocumentSequence = (type, shopSettings, branchId = null) => {
   const date = new Date();
   const YY = String(date.getFullYear()).slice(-2);
   const YYYY = String(date.getFullYear());
@@ -26,14 +26,24 @@ export const getDocumentSequence = (type, shopSettings) => {
     case 'proforma': prefixKey = 'proforma'; break;
     case 'quotation': prefixKey = 'quotation'; break;
     case 'credit_note': prefixKey = 'return'; break;
-    case 'delivery': prefixKey = 'delivery'; break;
+    case 'delivery':
+    case 'delivery_challan': prefixKey = 'delivery'; break;
     case 'receipt': prefixKey = 'receipt'; break;
     case 'so': prefixKey = 'so'; break;
     default: prefixKey = 'inv'; break;
   }
 
-  const seqValue = Number(shopSettings[`${prefixKey}_seq`] || 0) + 1;
-  const format = shopSettings[`${prefixKey}_format`] || "INV-SEQ";
+  let activePrefix = prefixKey;
+  if (branchId && branchId !== 'main' && branchId !== 'all') {
+    const branchHasFormat = shopSettings[`${branchId}_${prefixKey}_format`] !== undefined;
+    const branchHasSeq = shopSettings[`${branchId}_${prefixKey}_seq`] !== undefined;
+    if (branchHasFormat || branchHasSeq) {
+      activePrefix = `${branchId}_${prefixKey}`;
+    }
+  }
+
+  const seqValue = Number(shopSettings[`${activePrefix}_seq`] || 0) + 1;
+  const format = shopSettings[`${activePrefix}_format`] || "INV-SEQ";
   
   const seqStr = String(seqValue).padStart(3, '0');
 
@@ -47,6 +57,7 @@ export const getDocumentSequence = (type, shopSettings) => {
   return {
     invoiceNumber: formatted,
     nextSeq: seqValue,
-    prefixKey: prefixKey
+    prefixKey: prefixKey,
+    activePrefix: activePrefix
   };
 };

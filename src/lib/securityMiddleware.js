@@ -293,7 +293,7 @@ export function assertWritePermission(collectionName) {
 
   // Inventory-only collections
   if (INVENTORY_ONLY_WRITE_COLLECTIONS.has(collectionName)) {
-    if (userLevel >= 7) { // cashier = 7
+    if (collectionName !== 'products' && userLevel >= 7) { // cashier = 7
       _logAccessDenied(ctx, collectionName, 'Inventory role required');
       throw new Error(`403 Forbidden: ${collectionName} requires warehouse or manager access.`);
     }
@@ -320,7 +320,7 @@ export function assertDeletePermission(collectionName) {
   }
 
   // Most deletions: admin only
-  const adminDeleteOnly = ['products', 'customers', 'expenses', 'purchases',
+  const adminDeleteOnly = ['customers', 'expenses', 'purchases',
                            'inventory', 'loans', 'users', 'warehouses'];
   if (adminDeleteOnly.includes(collectionName) && userLevel > 3) {
     _logAccessDenied(ctx, collectionName, 'Admin only delete');

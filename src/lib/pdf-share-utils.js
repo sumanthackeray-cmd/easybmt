@@ -16,7 +16,7 @@ const getCORSImageUrl = (url) => {
 
 // Helper: get initials for shop avatar fallback
 const getInitials = (name) => {
-  if (!name || name === "Vogats") return "GS";
+  if (!name) return "GS";
   const words = name.trim().split(/\s+/);
   if (words.length >= 2) {
     return (words[0][0] + words[1][0]).toUpperCase();
@@ -47,7 +47,7 @@ export function generateThermalHTML(inv = {}, shop = {}, printerSize = "58mm") {
   const is80mm = printerSize === "80mm";
   const WC = is80mm ? "w80" : "w58";
 
-  const shopName = (!shop.shop_name || shop.shop_name === "Vogats") ? "EASYBMT SHOP" : shop.shop_name;
+  const shopName = !shop.shop_name ? "EASYBMT SHOP" : shop.shop_name;
   const shopInitials = getInitials(shopName);
 
   const subtotal = inv.subtotal || 0;
@@ -690,12 +690,12 @@ async function renderThermalToPDFBlob(inv, shop, printerSize = "58mm") {
 }
 
 // Helper: render invoice HTML to a canvas, then to PDF blob
-async function renderInvoiceToPDFBlob(inv, shop, forceA4 = false) {
+async function renderInvoiceToPDFBlob(inv, shop, forceA4 = false, documentType = null, templateId = null) {
   // Check if invoice is B2C (Default is B2C if billing_type is empty)
   // Enforce A4 if explicitly requested OR if created from general invoices page (source === 'general')
   // Fallback: If it's a legacy invoice without source, check if invoice_number lacks 'POS'
   const isGeneralInvoice = inv.source === 'general' || (inv.invoice_number && !inv.invoice_number.includes('POS') && !inv.invoice_number.includes('SM-') && !inv.invoice_number.includes('FSH-'));
-  const shouldForceA4 = forceA4 || isGeneralInvoice;
+  const shouldForceA4 = forceA4 || isGeneralInvoice || documentType === "packing_list" || documentType === "delivery_challan";
   const isB2C = !shouldForceA4 && (inv.billing_type || "B2C").toUpperCase() === "B2C";
   
   if (isB2C) {
@@ -718,86 +718,114 @@ async function renderInvoiceToPDFBlob(inv, shop, forceA4 = false) {
   }
 
   // Standard A4 template generation for B2B or fallback
-  const html = generateInvoiceHTML(inv, shop);
-
-  // Use a dynamic iframe to isolate rendering, completely avoiding parent stylesheet (Tailwind, reset) leakage
-  const iframe = document.createElement("iframe");
-  iframe.style.position = "absolute";
-  iframe.style.left = "-9999px";
-  iframe.style.top = "0";
-  iframe.style.width = "800px";
-  iframe.style.height = "1130px";
-  iframe.style.border = "0";
-  document.body.appendChild(iframe);
-
-  const docContext = iframe.contentWindow.document;
-  docContext.open();
-  docContext.write(html);
-  docContext.close();
-
-  // Wait for loading inside iframe context
-  await new Promise((r) => {
-    iframe.onload = r;
-    setTimeout(r, 600); // safety fallback
-  });
-
-  const iframeBody = iframe.contentWindow.document.body;
-  await waitForImages(iframeBody);
-  lockImageDimensions(iframeBody);
-
-  try {
-    if (iframe.contentWindow.document.fonts && iframe.contentWindow.document.fonts.ready) {
-      await iframe.contentWindow.document.fonts.ready;
+  const docsToRender = [];
+  if (inv.create_packing_list || inv.create_delivery_challan) {
+    docsToRender.push({ type: "invoice", template: shop?.b2b_invoice_template || "template_1" });
+    if (inv.create_delivery_challan) {
+      docsToRender.push({ type: "delivery_challan", template: shop?.delivery_challan_template || "template_1" });
     }
-  } catch (e) {
-    console.warn("Iframe fonts loading promise failed", e);
+    if (inv.create_packing_list) {
+      docsToRender.push({ type: "packing_list", template: shop?.packing_list_template || "template_1" });
+    }
+  } else {
+    const activeTemplate = templateId || (
+      (documentType || inv.type) === "packing_list" ? shop?.packing_list_template :
+      (documentType || inv.type) === "delivery_challan" ? shop?.delivery_challan_template :
+      shop?.b2b_invoice_template
+    ) || "template_1";
+    docsToRender.push({ type: documentType || inv.type || "invoice", template: activeTemplate });
   }
 
-  try {
-    const canvas = await html2canvas(iframeBody, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: "#ffffff",
-      logging: false,
-      width: 800,
-      windowWidth: 800,
+  let doc = null;
+  const imgWidth = 595.28; // A4 width in points
+  const pageHeight = 841.89; // A4 height in points
+
+  for (let idx = 0; idx < docsToRender.length; idx++) {
+    const currentDoc = docsToRender[idx];
+    const html = generateInvoiceHTML(inv, shop, currentDoc.type, currentDoc.template);
+
+    // Use a dynamic iframe to isolate rendering, completely avoiding parent stylesheet (Tailwind, reset) leakage
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "absolute";
+    iframe.style.left = "-9999px";
+    iframe.style.top = "0";
+    iframe.style.width = "800px";
+    iframe.style.height = "1130px";
+    iframe.style.border = "0";
+    document.body.appendChild(iframe);
+
+    const docContext = iframe.contentWindow.document;
+    docContext.open();
+    docContext.write(html);
+    docContext.close();
+
+    // Wait for loading inside iframe context
+    await new Promise((r) => {
+      iframe.onload = r;
+      setTimeout(r, 600); // safety fallback
     });
 
-    document.body.removeChild(iframe);
+    const iframeBody = iframe.contentWindow.document.body;
+    await waitForImages(iframeBody);
+    lockImageDimensions(iframeBody);
 
-    const imgData = canvas.toDataURL("image/jpeg", 0.95);
-    const imgWidth = 595.28; // A4 width in points
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-    
-    const doc = new jsPDF("p", "pt", "a4");
-    const pageHeight = 841.89; // A4 height in points
-    let heightLeft = imgHeight;
-    let position = 0;
+    try {
+      if (iframe.contentWindow.document.fonts && iframe.contentWindow.document.fonts.ready) {
+        await iframe.contentWindow.document.fonts.ready;
+      }
+    } catch (e) {
+      console.warn("Iframe fonts loading promise failed", e);
+    }
 
-    // First page
-    doc.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
+    try {
+      const canvas = await html2canvas(iframeBody, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+        width: 800,
+        windowWidth: 800,
+      });
 
-    // Additional pages if content overflows
-    while (heightLeft > 0) {
-      position = -(pageHeight * (Math.ceil(imgHeight / pageHeight) - Math.ceil(heightLeft / pageHeight)));
-      doc.addPage();
+      document.body.removeChild(iframe);
+
+      const imgData = canvas.toDataURL("image/jpeg", 0.95);
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      if (!doc) {
+        doc = new jsPDF("p", "pt", "a4");
+      } else {
+        doc.addPage();
+      }
+
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      // First page
       doc.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
       heightLeft -= pageHeight;
-    }
 
-    return doc;
-  } catch (err) {
-    if (document.body.contains(iframe)) {
-      document.body.removeChild(iframe);
+      // Additional pages if content overflows
+      while (heightLeft > 0) {
+        position = -(pageHeight * (Math.ceil(imgHeight / pageHeight) - Math.ceil(heightLeft / pageHeight)));
+        doc.addPage();
+        doc.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+    } catch (err) {
+      if (document.body.contains(iframe)) {
+        document.body.removeChild(iframe);
+      }
+      throw err;
     }
-    throw err;
   }
+
+  return doc;
 }
 
 // Upload PDF to cloud and return URL (for WhatsApp sharing)
-export async function generateAndUploadInvoicePDF(inv, shop, forceA4 = false) {
-  const doc = await renderInvoiceToPDFBlob(inv, shop, forceA4);
+export async function generateAndUploadInvoicePDF(inv, shop, forceA4 = false, documentType = null, templateId = null) {
+  const doc = await renderInvoiceToPDFBlob(inv, shop, forceA4, documentType, templateId);
   const blob = doc.output("blob");
   const file = new File([blob], `${inv.invoice_number || "invoice"}.pdf`, { type: "application/pdf" });
   const { file_url } = await base44.integrations.Core.UploadFile({ file });
@@ -805,16 +833,16 @@ export async function generateAndUploadInvoicePDF(inv, shop, forceA4 = false) {
 }
 
 // Instant local PDF download - no cloud upload
-export async function downloadInvoicePDF(inv, shop, forceA4 = false) {
-  const doc = await renderInvoiceToPDFBlob(inv, shop, forceA4);
+export async function downloadInvoicePDF(inv, shop, forceA4 = false, documentType = null, templateId = null) {
+  const doc = await renderInvoiceToPDFBlob(inv, shop, forceA4, documentType, templateId);
   const filename = `${inv.invoice_number || "invoice"}.pdf`;
   doc.save(filename);
   return filename;
 }
 
 // Generate PDF blob for WhatsApp Web Share API
-export async function getInvoicePDFBlob(inv, shop, forceA4 = false) {
-  const doc = await renderInvoiceToPDFBlob(inv, shop, forceA4);
+export async function getInvoicePDFBlob(inv, shop, forceA4 = false, documentType = null, templateId = null) {
+  const doc = await renderInvoiceToPDFBlob(inv, shop, forceA4, documentType, templateId);
   const blob = doc.output("blob");
   return new File([blob], `${inv.invoice_number || "invoice"}.pdf`, { type: "application/pdf" });
 }
@@ -831,7 +859,7 @@ export async function shareInvoiceViaWhatsApp(invoice, shopSettings, phoneNumber
 
   const loadingToast = toast.loading("Preparing invoice...");
   try {
-    const shopName = (!shopSettings.shop_name || shopSettings.shop_name === "Vogats") ? "EASYBMT SHOP" : shopSettings.shop_name;
+    const shopName = !shopSettings.shop_name ? "EASYBMT SHOP" : shopSettings.shop_name;
     const customerName = invoice.customer_name || "Customer";
     
     const pdfFile = await getInvoicePDFBlob(invoice, shopSettings);

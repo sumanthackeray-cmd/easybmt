@@ -446,7 +446,9 @@ exports.manageStaffUser = functions.https.onCall(async (data, context) => {
         user_code: userCode.trim().toUpperCase(),
         salary: salary ? Number(salary) : 0,
         assigned_by: callerUid,
-        assigned_at: new Date().toISOString()
+        assigned_at: new Date().toISOString(),
+        companyId: companyId,
+        updated_date: new Date().toISOString()
       });
 
       // Log action to Tenant Audit Log subcollection
@@ -505,6 +507,8 @@ exports.manageStaffUser = functions.https.onCall(async (data, context) => {
       if (data.password) {
         updates.profile_password = "enc:" + Buffer.from(data.password).toString("base64");
       }
+
+      updates.updated_date = new Date().toISOString();
 
       await db.doc(`companies/${companyId}/users/${uid}`).update(updates);
 

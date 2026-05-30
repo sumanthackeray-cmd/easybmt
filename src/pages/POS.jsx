@@ -92,7 +92,7 @@ function mapShopTypeToLayout(businessType) {
 
 // Helper to get initials for shop logo avatar fallback
 const getInitials = (name) => {
-  if (!name || name === "Vogats") return "GS";
+  if (!name) return "GS";
   const words = (name.trim() || "").split(/\s+/).filter(w => w);
   if (words.length >= 2 && words[0].length > 0 && words[1].length > 0) {
     return (words[0][0] + words[1][0]).toUpperCase();
@@ -662,12 +662,19 @@ function POSContent() {
 
   // Lightweight local event listener to react instantly to IndexedDB modifications
   useEffect(() => {
+    let timeoutId = null;
     const handleDataUpdated = () => {
-      queryClient.invalidateQueries({ queryKey: ["products"] });
-      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["products"] });
+        queryClient.invalidateQueries({ queryKey: ["customers"] });
+      }, 100);
     };
     window.addEventListener("easybmt-data-updated", handleDataUpdated);
-    return () => window.removeEventListener("easybmt-data-updated", handleDataUpdated);
+    return () => {
+      window.removeEventListener("easybmt-data-updated", handleDataUpdated);
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, [queryClient]);
 
   // Query Data
@@ -2909,7 +2916,7 @@ function POSContent() {
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-t border-slate-200/50 dark:border-slate-800/40 px-2 flex justify-around items-center pb-2 pt-1.5 z-30 shadow-[0_-10px_35px_rgba(0,0,0,0.06)] dark:shadow-none h-[54px]">
         {/* Home/Dashboard */}
         <Link
-          to="/"
+          to="/dashboard"
           className="flex flex-col items-center justify-center flex-1 gap-1 text-slate-500 dark:text-slate-400 hover:text-amber-500 dark:hover:text-amber-400 transition-all h-full"
         >
           <Store className="w-4.5 h-4.5" />

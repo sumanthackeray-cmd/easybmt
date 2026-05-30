@@ -30,7 +30,9 @@ import {
   putLocal,
   softDeleteLocal,
   enqueueMutation,
-  generateId
+  generateId,
+  db as dexieDb,
+  broadcastMutation
 } from '@/lib/localDB';
 
 /** Dedupe concurrent list() calls + throttle background refresh. */
@@ -281,8 +283,15 @@ const createFirebaseEntityRepository = (entityName) => {
         userId: uid,
       };
 
+      if (navigator.onLine) {
+        const companyId = docData.companyId || localStorage.getItem("company_id");
+        const docRef = doc(db, "companies", companyId, colName, docId);
+        await setDoc(docRef, docData);
+      } else {
+        await enqueueMutation(colName, "CREATE", docId, docData);
+      }
+
       const newItem = await putLocal(colName, docData);
-      await enqueueMutation(colName, "CREATE", docId, docData);
       
       try {
         if (queryClientInstance && typeof queryClientInstance.getQueryCache === 'function') {
@@ -343,8 +352,15 @@ const createFirebaseEntityRepository = (entityName) => {
 
       const updatedItem = { ...oldItem, ...sanitizedData, id };
       
-      await putLocal(colName, updatedItem);
-      await enqueueMutation(colName, "UPDATE", id, sanitizedData);
+      if (navigator.onLine) {
+        const companyId = updatedItem.companyId || localStorage.getItem("company_id");
+        const docRef = doc(db, "companies", companyId, colName, id);
+        await setDoc(docRef, updatedItem, { merge: true });
+      } else {
+        await enqueueMutation(colName, "UPDATE", id, sanitizedData);
+      }
+
+      const newItem = await putLocal(colName, updatedItem);
       
       try {
         if (queryClientInstance && typeof queryClientInstance.getQueryCache === 'function') {
@@ -352,7 +368,7 @@ const createFirebaseEntityRepository = (entityName) => {
           queries.forEach(q => {
             if (Array.isArray(q.queryKey) && q.queryKey[0] === colName) {
               const currentData = queryClientInstance.getQueryData(q.queryKey) || [];
-              const updatedData = currentData.map(item => item.id === id ? updatedItem : item);
+              const updatedData = currentData.map(item => item.id === id ? newItem : item);
               queryClientInstance.setQueryData(q.queryKey, updatedData);
             }
           });
@@ -368,13 +384,13 @@ const createFirebaseEntityRepository = (entityName) => {
           entityType: entityName,
           entityId: id,
           description: `Immutable audit log: ${entityName} updated.`,
-          changes: { before: oldItem, after: updatedItem }
+          changes: { before: oldItem, after: newItem }
         });
       } catch (err) {
         errorLogger.captureError('AuditLog', err, { action: 'UPDATE', entityName, id });
       }
 
-      return updatedItem;
+      return newItem;
     },
     delete: async (id) => {
       const uid = getUserId();
@@ -394,7 +410,21 @@ const createFirebaseEntityRepository = (entityName) => {
       // Enforce company integrity check
       security.assertCompanyIntegrity(oldItem, colName);
 
-      await softDeleteLocal(colName, id);
+      if (navigator.onLine) {
+        const companyId = oldItem.companyId || localStorage.getItem("company_id");
+        const docRef = doc(db, "companies", companyId, colName, id);
+        await deleteDoc(docRef);
+        
+        const updatedItem = {
+          ...oldItem,
+          isDeleted: true,
+          updated_date: new Date().toISOString(),
+        };
+        await dexieDb[colName].put(updatedItem);
+        broadcastMutation("LOCAL_PUT", { storeName: colName, id });
+      } else {
+        await softDeleteLocal(colName, id);
+      }
       
       try {
         if (queryClientInstance && typeof queryClientInstance.getQueryCache === 'function') {

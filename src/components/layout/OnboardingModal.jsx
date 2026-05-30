@@ -122,11 +122,11 @@ export default function OnboardingModal() {
       return;
     }
 
-    if (!existing || !existing.shop_name || existing.shop_name === "Vogats" || !existing.business_entity_type) {
+    if (!existing || !existing.shop_name || !existing.business_entity_type) {
       setOpen(true);
       if (existing) {
         setForm({
-          shop_name: existing.shop_name === "Vogats" ? "" : (existing.shop_name || ""),
+          shop_name: existing.shop_name || "",
           business_entity_type: existing.business_entity_type || "",
           owner_name: existing.owner_name || "",
           gstin: existing.gstin || "",

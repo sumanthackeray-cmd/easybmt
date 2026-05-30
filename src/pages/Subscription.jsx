@@ -7,38 +7,44 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
+import confetti from "canvas-confetti";
+import OfferDialog from "@/components/subscription/OfferDialog";
 
 const PLANS = [
   {
     id: "free", name: "Free Trial", price: 0, period: "14 days", icon: Gift,
-    color: "text-muted-foreground", border: "border-border", badge: null,
+    color: "text-muted-foreground", border: "border-border", badge: "Special Offer",
     description: "Try all features free for 14 days",
     features: ["Up to 25 invoices", "Up to 50 products", "Basic GST reports", "Watermarked invoices", "Single user"],
     cta: "Current Plan", ctaClass: "bg-secondary text-foreground",
+    stamp: "3 Months Completely Free"
   },
   {
     id: "starter", name: "Starter", price: 499, period: "month", icon: Zap,
-    color: "text-info", border: "border-info/30", badge: null,
+    color: "text-info", border: "border-info/30", badge: "Special Offer",
     description: "Perfect for small shops & kirana stores",
     features: ["500 invoices/month", "Unlimited products", "GST billing & reports", "Barcode printing", "E-Waybill support", "WhatsApp sharing"],
     cta: "Get Starter", ctaClass: "bg-info text-white hover:bg-info/90",
     razorpay_monthly: 49900, razorpay_yearly: 479040,
+    stamp: "3 Months Completely Free"
   },
   {
     id: "professional", name: "Professional", price: 999, period: "month", icon: Star,
-    color: "text-primary", border: "border-primary/40", badge: "Most Popular",
+    color: "text-primary", border: "border-primary/40", badge: "Most Popular & Offer",
     description: "For growing businesses & distributors",
     features: ["Unlimited invoices", "Multi-user (5 users)", "AI Insights & Analytics", "Custom branding & logo", "Cloud backup", "Priority support", "GSTR-1/3B reports"],
     cta: "Go Professional", ctaClass: "gold-gradient text-black font-black",
     highlighted: true, razorpay_monthly: 99900, razorpay_yearly: 958080,
+    stamp: "3 Months Completely Free"
   },
   {
     id: "enterprise", name: "Enterprise", price: 2499, period: "month", icon: Building2,
-    color: "text-purple", border: "border-purple/30", badge: "Best Value",
+    color: "text-purple", border: "border-purple/30", badge: "Best Value & Offer",
     description: "For large enterprises & multi-branch",
     features: ["Everything in Professional", "Multi-branch support", "Unlimited users", "AI automation", "API access", "Dedicated account manager"],
     cta: "Contact Sales", ctaClass: "bg-purple text-white hover:bg-purple/90",
     razorpay_monthly: 249900, razorpay_yearly: 2399040,
+    stamp: "3 Months Completely Free"
   },
 ];
 
@@ -65,6 +71,29 @@ export default function Subscription() {
   const [billing, setBilling] = useState("monthly");
   const [openFaq, setOpenFaq] = useState(null);
   const [paying, setPaying] = useState(null);
+  const [offerPopup, setOfferPopup] = useState({ isOpen: false, plan: null });
+
+  const handleSubscribeClick = (plan) => {
+    if (plan.id === "enterprise" || plan.id === "free") {
+      handleUpgrade(plan);
+      return;
+    }
+    setOfferPopup({ isOpen: true, plan: plan });
+  };
+
+  import("react").then(({ useEffect }) => {
+    useEffect(() => {
+      // Flower rain on visit
+      const end = Date.now() + 2 * 1000;
+      const colors = ['#ff0a54', '#ff477e', '#ff7096', '#ff85a1', '#fbb1bd', '#f9bec7'];
+      const frame = () => {
+        confetti({ particleCount: 4, angle: 60, spread: 55, origin: { x: 0 }, colors, zIndex: 1000 });
+        confetti({ particleCount: 4, angle: 120, spread: 55, origin: { x: 1 }, colors, zIndex: 1000 });
+        if (Date.now() < end) requestAnimationFrame(frame);
+      };
+      frame();
+    }, []);
+  });
 
   const { data: sub } = useQuery({
     queryKey: ["userSubscription"],
@@ -228,7 +257,7 @@ export default function Subscription() {
               isCurrent && "ring-2 ring-success/50"
             )}>
               {plan.badge && !isCurrent && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20">
                   <span className={cn("px-3 py-1 rounded-full text-[11px] font-extrabold whitespace-nowrap",
                     plan.highlighted ? "gold-gradient text-black" : "bg-purple/20 text-purple border border-purple/30"
                   )}>{plan.badge}</span>
@@ -250,7 +279,10 @@ export default function Subscription() {
                 </div>
               </div>
 
-              <div>
+              <div className="relative">
+                <div className="absolute -right-2 -top-2 rotate-[15deg] bg-red-500 text-white text-[9px] font-black px-2 py-0.5 rounded shadow-md border border-red-700/50 z-10">
+                  {plan.stamp}
+                </div>
                 {plan.price === 0 ? (
                   <div className="text-3xl font-black">FREE</div>
                 ) : (
@@ -276,7 +308,7 @@ export default function Subscription() {
               <Button
                 className={cn("w-full font-bold", isCurrent ? "bg-success/20 text-success border border-success/30" : plan.ctaClass)}
                 disabled={isCurrent || paying === plan.id || plan.id === "free"}
-                onClick={() => handleUpgrade(plan)}
+                onClick={() => handleSubscribeClick(plan)}
               >
                 {paying === plan.id ? (
                   <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Processing...</>
@@ -291,7 +323,7 @@ export default function Subscription() {
       <div className="bg-card border border-border rounded-2xl p-5">
         <h3 className="font-bold text-sm mb-4">🔒 All Plans Include</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {["GST Compliant Invoices", "Secure Data Storage", "Mobile App Access", "Email Support", "Auto Backup", "Data Export", "OTP Login", "Regular Updates"].map(f => (
+          {["GST Compliant Invoices", "Secure Data Storage", "Mobile App Access", "Email Support", "Auto Backup", "Data Export", "Email OTP Verification", "Regular Updates"].map(f => (
             <div key={f} className="flex items-center gap-2 text-[12px] text-muted-foreground">
               <Check className="w-3.5 h-3.5 text-success shrink-0" />{f}
             </div>
@@ -319,6 +351,15 @@ export default function Subscription() {
         <p className="text-muted-foreground text-sm mb-4">No credit card required. Full access to all Professional features.</p>
         <p className="text-[12px] text-muted-foreground">Payments powered by <span className="font-bold text-primary">Razorpay</span> — India's most trusted payment gateway</p>
       </div>
+
+      <OfferDialog 
+        isOpen={offerPopup.isOpen}
+        planName={offerPopup.plan?.name || ""}
+        onClose={() => setOfferPopup({ isOpen: false, plan: null })}
+        onProceed={() => {
+          if (offerPopup.plan) handleUpgrade(offerPopup.plan);
+        }}
+      />
     </div>
   );
 }

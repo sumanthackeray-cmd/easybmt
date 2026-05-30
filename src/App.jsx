@@ -7,6 +7,7 @@ import { Toaster as SonnerToaster } from "sonner";
 import PremiumPermissionOnboarding from "@/components/PremiumPermissionOnboarding";
 import { ToastContainer } from "@/components/ui/ToastContainer";
 import SyncStatusIndicator from "@/components/SyncStatusIndicator";
+import { toast } from "@/lib/toast";
 
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClientInstance } from "@/lib/query-client";
@@ -20,6 +21,7 @@ import { warmCriticalCaches, resetPrefetchState } from "@/lib/performance/prefet
 import { registerPopState } from "@/hooks/useBackButton";
 import AppInstallPrompt from "@/components/AppInstallPrompt";
 import { ThemeSync } from "@/components/ThemeSync";
+import { HelmetProvider } from "react-helmet-async";
 
 // Critical / Initial Routes
 import Login from "@/pages/Login";
@@ -31,6 +33,8 @@ import AppLayout from "@/components/layout/AppLayout";
 import OnboardingWizard from "@/modules/registration/OnboardingWizard";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsConditions from "@/pages/TermsConditions";
+import Pricing from "@/pages/Pricing";
+import Landing from "@/pages/Landing";
 
 // Lazy Loaded Routes (Code Split for sub-100ms loading)
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
@@ -85,7 +89,9 @@ const AuthenticatedApp = () => {
     }
   }, [user, authChecked, companyId]);
 
-  if (isLoadingPublicSettings || isLoadingAuth) {
+  const isPublicRoute = ['/', '/login', '/register', '/forgot-password', '/reset-password', '/unauthorized', '/onboarding', '/privacy', '/terms', '/pricing'].includes(window.location.pathname.replace(/\/$/, '')) || window.location.pathname === '/';
+
+  if ((isLoadingPublicSettings || isLoadingAuth) && !isPublicRoute) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
@@ -108,19 +114,21 @@ const AuthenticatedApp = () => {
   return (
     <Suspense fallback={<LoadingFallback />}>
       <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Landing />} />
+        <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
+        <Route path="/register" element={user ? <Navigate to="/dashboard" replace /> : <Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
         <Route path="/onboarding" element={<OnboardingWizard />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/terms" element={<TermsConditions />} />
+        <Route path="/pricing" element={<Pricing />} />
 
         <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
           <Route path="/pos" element={<PageRouteGuard pageKey="pos"><POS /></PageRouteGuard>} />
           <Route element={<AppLayout />}>
-            <Route path="/" element={<Dashboard />} />
+            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/invoices" element={<PageRouteGuard pageKey="invoices"><Invoices /></PageRouteGuard>} />
             <Route path="/purchases" element={<PageRouteGuard pageKey="purchases"><Purchases /></PageRouteGuard>} />
             <Route path="/waybills" element={<PageRouteGuard pageKey="waybills"><Waybills /></PageRouteGuard>} />
@@ -169,6 +177,15 @@ function App() {
   const [showPermissionsOnboarding, setShowPermissionsOnboarding] = useState(false);
 
   useEffect(() => {
+    const handleSyncError = (e) => {
+      const { entityName, action, error } = e.detail;
+      toast.error(`Background sync failed for ${entityName} (${action}): ${error}`);
+    };
+    window.addEventListener("easybmt-sync-error", handleSyncError);
+    return () => window.removeEventListener("easybmt-sync-error", handleSyncError);
+  }, []);
+
+  useEffect(() => {
     registerPopState();
 
     // Conditionally trigger onboarding on native mobile devices for first-time launch
@@ -200,17 +217,19 @@ function App() {
   }
 
   return (
-    <AuthProvider>
-      <QueryClientProvider client={queryClientInstance}>
-        <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-          <AuthenticatedApp />
-        </Router>
-        <ThemeSync />
-        <AppInstallPrompt />
-        <ToastContainer />
-        <SyncStatusIndicator />
-      </QueryClientProvider>
-    </AuthProvider>
+    <HelmetProvider>
+      <AuthProvider>
+        <QueryClientProvider client={queryClientInstance}>
+          <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            <AuthenticatedApp />
+          </Router>
+          <ThemeSync />
+          <AppInstallPrompt />
+          <ToastContainer />
+          <SyncStatusIndicator />
+        </QueryClientProvider>
+      </AuthProvider>
+    </HelmetProvider>
   );
 }
 

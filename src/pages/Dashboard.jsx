@@ -2,6 +2,7 @@ import React, { Suspense, useState, useEffect } from "react";
 import DashboardShell from "@/components/dashboard/DashboardShell";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import ProfileCompletionBanner from '../modules/registration/ProfileCompletionBanner';
+import SEO from "@/components/SEO";
 
 import { useSupermarketMode } from "@/hooks/useSupermarketMode";
 import { useAuth } from "@/lib/AuthContext";
@@ -28,6 +29,9 @@ export default function DashboardRouter() {
   }, [startDate, endDate, authChecked, user, companyId, refetchAll]);
 
   const renderDashboard = () => {
+    if (user?.hierarchy_level && user?.hierarchy_level > 1) {
+      return <StaffDashboard data={dashboardData} />;
+    }
     return <EnterpriseDashboard data={dashboardData} />;
   };
 
@@ -39,6 +43,7 @@ export default function DashboardRouter() {
       onRefresh={refetchAll}
       isRefreshing={dashboardData.isLoading}
     >
+      <SEO title="Dashboard - EasyBMT" description="Overview of your business metrics, sales, and analytics." />
       <div className="space-y-6">
         <ProfileCompletionBanner />
         <Suspense fallback={<div className="p-8 text-center text-muted-foreground animate-pulse font-semibold">Loading Smart Dashboard Experience...</div>}>

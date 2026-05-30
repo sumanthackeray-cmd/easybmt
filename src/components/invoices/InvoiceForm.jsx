@@ -13,9 +13,11 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { toast } from "@/lib/toast";
 import { downloadInvoicePDF } from "@/lib/pdf-share-utils";
 import { fetchGSTDetailsFromPortal } from "@/services/gst/gst-lookup";
+import { getDocumentSequence } from "@/lib/sequence-utils";
 
 export default function InvoiceForm({ open, onOpenChange, invoice, customers = [], products = [], onSave, type = "sale" }) {
   const queryClient = useQueryClient();
+  const activeBranchId = localStorage.getItem('selectedBranch') || localStorage.getItem('branch_id') || 'main';
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
   const [showAddProductModal, setShowAddProductModal] = useState(false);
 
@@ -42,6 +44,8 @@ export default function InvoiceForm({ open, onOpenChange, invoice, customers = [
   const [showAddlDiscount, setShowAddlDiscount] = useState(false);
   const [showReference, setShowReference] = useState(false);
   const [showShipping, setShowShipping] = useState(false);
+  const [createPackingList, setCreatePackingList] = useState(false);
+  const [createDeliveryChallan, setCreateDeliveryChallan] = useState(false);
 
   const [form, setForm] = useState({
     date: invoice?.date || today(),
@@ -421,7 +425,9 @@ export default function InvoiceForm({ open, onOpenChange, invoice, customers = [
       tax_amount: erpTotals.cgst + erpTotals.sgst + erpTotals.igst,
       is_interstate: form.place_of_supply && form.place_of_supply.split("-")[0] !== "05",
       paid_amount: finalPaidAmount,
-      status: dynamicStatus
+      status: dynamicStatus,
+      create_packing_list: createPackingList,
+      create_delivery_challan: createDeliveryChallan
     });
   };
 
@@ -488,7 +494,9 @@ export default function InvoiceForm({ open, onOpenChange, invoice, customers = [
       paid_amount: finalPaidAmount,
       status: dynamicStatus,
       invoice_number: invoice?.invoice_number || "DRAFT",
-      source: "general"
+      source: "general",
+      create_packing_list: createPackingList,
+      create_delivery_challan: createDeliveryChallan
     };
 
     try {
@@ -551,7 +559,20 @@ export default function InvoiceForm({ open, onOpenChange, invoice, customers = [
 
               <div className="space-y-1.5">
                 <Label className="text-[10px] text-muted-foreground">Invoice No. <span className="text-destructive">*</span></Label>
-                <Input value={invoice?.invoice_number || "GST-001"} disabled className="h-9 bg-background border-input text-foreground text-xs font-mono font-bold" />
+                <Input 
+                  value={
+                    invoice?.invoice_number || 
+                    getDocumentSequence(
+                      form.type === "sale" 
+                        ? (invoiceType === "GST" ? "gst" : invoiceType === "Bill of Supply" ? "bill" : "inv") 
+                        : (form.type || "sale"), 
+                      shopSettings || {},
+                      activeBranchId
+                    ).invoiceNumber
+                  } 
+                  disabled 
+                  className="h-9 bg-background border-input text-foreground text-xs font-mono font-bold" 
+                />
               </div>
 
               <div className="space-y-1.5">
@@ -878,6 +899,15 @@ export default function InvoiceForm({ open, onOpenChange, invoice, customers = [
                     <label className="flex items-center gap-1.5 text-xs text-foreground cursor-pointer">
                       <input type="checkbox" checked={showShipping} onChange={e => setShowShipping(e.target.checked)} className="accent-blue-600 rounded" />
                       <span>Add shipping</span>
+                    </label>
+                    <span className="text-muted-foreground/30 text-xs hidden md:inline">|</span>
+                    <label className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 cursor-pointer">
+                      <input type="checkbox" checked={createPackingList} onChange={e => setCreatePackingList(e.target.checked)} className="accent-indigo-600 rounded scale-105" />
+                      <span>📦 Generate Packing List</span>
+                    </label>
+                    <label className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 cursor-pointer">
+                      <input type="checkbox" checked={createDeliveryChallan} onChange={e => setCreateDeliveryChallan(e.target.checked)} className="accent-emerald-600 rounded scale-105" />
+                      <span>🚚 Generate Delivery Challan</span>
                     </label>
                   </div>
                 </div>

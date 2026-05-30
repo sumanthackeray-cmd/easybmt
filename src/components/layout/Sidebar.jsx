@@ -56,7 +56,7 @@ const getPageKeyForPath = (path) => {
 
 const NAV_ITEMS = [
   // 🏠 Core
-  { path: "/", icon: LayoutDashboard, label: "Dashboard", tKey: "nav.dashboard" },
+  { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard", tKey: "nav.dashboard" },
   { path: "/pos", icon: Zap, label: "Quick POS", badge: "FAST", tKey: "nav.pos" },
   
   // 🛒 Sales & Customers
@@ -118,7 +118,7 @@ export default function Sidebar({ mobile = false, onClose, defaultCollapsed = fa
     let items = NAV_ITEMS;
     if (isFashion) {
       items = [
-        { path: "/", icon: LayoutDashboard, label: "Dashboard", tKey: "nav.dashboard" },
+        { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard", tKey: "nav.dashboard" },
         { path: "/pos", icon: Zap, label: "Fashion POS", badge: "FAST", tKey: "nav.pos" },
         { path: "/invoices", icon: FileText, label: "Invoices", tKey: "nav.invoices" },
         { path: "/profiles", icon: Users, label: "Style Profiles", badge: "CRM", tKey: "nav.profiles" },
@@ -132,7 +132,7 @@ export default function Sidebar({ mobile = false, onClose, defaultCollapsed = fa
       ];
     } else if (isSupermarket) {
       items = [
-        { path: "/", icon: LayoutDashboard, label: "Dashboard", tKey: "nav.dashboard" },
+        { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard", tKey: "nav.dashboard" },
         { path: "/pos", icon: Zap, label: "Supermarket POS", badge: "FAST", tKey: "nav.pos" },
         { path: "/supermarket/counters", icon: Monitor, label: "Counter Mgmt", badge: "LIVE", tKey: "nav.supermarket_counters" },
         { path: "/supermarket/offers", icon: Tag, label: "Offers Engine", badge: "PROMO", tKey: "nav.supermarket_offers" },
@@ -160,7 +160,7 @@ export default function Sidebar({ mobile = false, onClose, defaultCollapsed = fa
     const enabled = shopSettings?.enabled_pages;
     if (enabled && Array.isArray(enabled) && enabled.length > 0) {
       items = items.filter(item => {
-        if (["/", "/settings", "/subscription"].includes(item.path)) return true;
+        if (["/", "/dashboard", "/settings", "/subscription"].includes(item.path)) return true;
         if (item.path.startsWith("/settings/")) return true;
         
         const mappedKey = getPageKeyForPath(item.path);
@@ -260,7 +260,7 @@ export default function Sidebar({ mobile = false, onClose, defaultCollapsed = fa
     if (!user) return true;
     
     // Essential core pages
-    if (item.path === "/" || item.path === "/subscription" || item.path === "/settings" || item.path.startsWith("/settings/")) {
+    if (item.path === "/" || item.path === "/dashboard" || item.path === "/subscription" || item.path === "/settings" || item.path.startsWith("/settings/")) {
       return true;
     }
     
@@ -367,7 +367,7 @@ export default function Sidebar({ mobile = false, onClose, defaultCollapsed = fa
             🏢 {shopSettings.shop_name || user?.business_name || "Business Outlet"}
           </p>
           <div className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1.5 truncate">
-            <span className="truncate">{user?.full_name || user?.name || "Kamlesh Kkumar"}</span>
+            <span className="truncate">{user?.full_name || user?.name || user?.email?.split('@')[0] || "Staff User"}</span>
             <span className="shrink-0 px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground text-[8px] font-bold border border-border/50">
               ID: {(user?.user_code === 'ADMIN-001' || localStorage.getItem('user_code') === 'ADMIN-001' ? `${(localStorage.getItem('company_id') || 'COMP').split('-')[0].substring(0, 6).toUpperCase()}-ADMIN-001` : user?.user_code || user?.id?.substring(0, 6) || "STF-01")}
             </span>

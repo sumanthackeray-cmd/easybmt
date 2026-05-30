@@ -18,6 +18,7 @@ import BillingSettingsTab from './settings/BillingSettingsTab';
 import SequenceSettingsTab from './settings/SequenceSettingsTab';
 import PrintingGeneralSettings from './settings/PrintingGeneralSettings';
 import ResponsiveTabs from "@/components/ui/ResponsiveTabs";
+import { generateInvoiceHTML } from "@/components/invoices/InvoicePrintPreview";
 import PremiumImageUploader from "@/components/ui/PremiumImageUploader";
 import { Link } from "react-router-dom";
 import { useTheme } from "next-themes";
@@ -67,6 +68,38 @@ export default function Settings() {
   const { theme, setTheme } = useTheme();
   const { t } = useLanguage();
   const [saving, setSaving] = useState(false);
+  const [previewType, setPreviewType] = useState("invoice");
+
+  const getPreviewTemplateId = () => {
+    if (previewType === "packing_list") return form.packing_list_template || "template_1";
+    if (previewType === "delivery_challan") return form.delivery_challan_template || "template_1";
+    return form.b2b_invoice_template || "template_1";
+  };
+
+  const sampleInvoice = {
+    invoice_number: "INV-2026-0001",
+    date: "2026-05-30",
+    due_date: "2026-06-14",
+    po_number: "PO-99221",
+    customer_name: "Acme Corporation Pvt Ltd",
+    customer_gstin: "27AAACA1234B1Z9",
+    bill_address: "Plot No. 42, Sector 18, Industrial Area",
+    bill_city: "Mumbai",
+    bill_pincode: "400001",
+    ship_address: "Plot No. 42, Sector 18, Industrial Area",
+    ship_city: "Mumbai",
+    ship_pincode: "400001",
+    place_of_supply: "Maharashtra (27)",
+    is_interstate: false,
+    status: "unpaid",
+    discount: 10,
+    payment_method: "Bank Transfer",
+    billing_type: "B2B",
+    items: [
+      { name: "Premium Enterprise Server Rack", desc: "42U Cabinet with cooling fans & PDU", hsn: "8473", qty: 2, rate: 45000, gst_rate: 18, unit: "Nos" },
+      { name: "Cat6 Ethernet Spool (305m)", desc: "Solid copper, low smoke zero halogen", hsn: "8544", qty: 5, rate: 6800, gst_rate: 18, unit: "Rolls" }
+    ]
+  };
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingSig, setUploadingSig] = useState(false);
   const [showProfilePassword, setShowProfilePassword] = useState(false);
@@ -138,6 +171,8 @@ export default function Settings() {
     invoice_prefix: "INV-",
     bank_name: "", account_no: "", ifsc: "", branch: "", upi_id: "",
     terms: "Goods once sold will not be returned. E.&O.E.",
+    invoice_notes: "Please mention Invoice number in payment description.",
+    invoice_declaration: "We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.",
     logo_url: "", signature_url: "",
     business_type: "retail",
     business_entity_type: "",
@@ -195,6 +230,9 @@ export default function Settings() {
     authorized_signatory: "",
     invoice_print_count_cash: 1,
     invoice_print_count_customer: 1,
+    b2b_invoice_template: "template_1",
+    packing_list_template: "template_1",
+    delivery_challan_template: "template_1",
   });
 
   useEffect(() => {
@@ -204,7 +242,7 @@ export default function Settings() {
   useEffect(() => {
     if (existing) {
       setForm({
-        shop_name: existing.shop_name === "Vogats" ? "" : (existing.shop_name || ""),
+        shop_name: existing.shop_name || "",
         gstin: existing.gstin || "",
         phone: existing.phone || user?.contact_mobile || user?.phone || "",
         email: existing.email || user?.contact_email || user?.email || "",
@@ -221,6 +259,8 @@ export default function Settings() {
         branch: existing.branch || "",
         upi_id: existing.upi_id || "",
         terms: existing.terms || "Goods once sold will not be returned. E.&O.E.",
+        invoice_notes: existing.invoice_notes || "Please mention Invoice number in payment description.",
+        invoice_declaration: existing.invoice_declaration || "We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.",
         logo_url: existing.logo_url || "",
         signature_url: existing.signature_url || "",
         business_type: existing.business_type || "retail",
@@ -265,6 +305,9 @@ export default function Settings() {
         delivery_seq: existing.delivery_seq || "0", delivery_format: existing.delivery_format || "DEL-SEQ", delivery_monthly: existing.delivery_monthly || false,
         receipt_seq: existing.receipt_seq || "0", receipt_format: existing.receipt_format || "REC-SEQ", receipt_monthly: existing.receipt_monthly || false,
         so_seq: existing.so_seq || "0", so_format: existing.so_format || "SO-SEQ", so_monthly: existing.so_monthly || false,
+        b2b_invoice_template: existing.b2b_invoice_template || "template_1",
+        packing_list_template: existing.packing_list_template || "template_1",
+        delivery_challan_template: existing.delivery_challan_template || "template_1",
       });
     }
   }, [existing]);
@@ -793,18 +836,157 @@ export default function Settings() {
         </TabsContent>
 
         <TabsContent value="invoice">
-          <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+          <div className="bg-card border border-border rounded-xl p-5 space-y-5">
             <h3 className="font-bold text-[15px] mb-2">{t('settings.invoice_title') || 'Invoice Configuration'}</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div><Label className="text-[11px]">{t('settings.invoice_prefix') || 'Invoice Number Prefix'}</Label><Input value={form.invoice_prefix} onChange={e => set("invoice_prefix", e.target.value)} placeholder="INV-" /></div>
-            </div>
-            <div><Label className="text-[11px]">{t('settings.terms_conditions') || 'Default Terms & Conditions'}</Label>
-              <textarea
-                className="w-full mt-1 bg-input border border-input rounded-md px-3 py-2 text-sm resize-none h-20 focus:outline-none focus:ring-1 focus:ring-ring"
-                value={form.terms}
-                onChange={e => set("terms", e.target.value)}
-                placeholder={t('settings.terms_placeholder') || 'Terms text...'}
-              />
+            
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Left Column: Form Settings */}
+              <div className="lg:col-span-5 space-y-5">
+                <div className="space-y-1">
+                  <Label className="text-[11px]">{t('settings.invoice_prefix') || 'Invoice Number Prefix'}</Label>
+                  <Input value={form.invoice_prefix} onChange={e => set("invoice_prefix", e.target.value)} placeholder="INV-" />
+                </div>
+                
+                <div className="border-t border-border/40 pt-4 space-y-4">
+                  <h4 className="font-bold text-xs uppercase tracking-wider text-muted-foreground">Premium B2B Document Layouts</h4>
+                  
+                  <div className="space-y-4">
+                    {/* B2B Invoice layout selector */}
+                    <div className="space-y-1.5">
+                      <Label className="text-[11px] font-bold">Default B2B Invoice Format</Label>
+                      <Select value={form.b2b_invoice_template || "template_1"} onValueChange={v => set("b2b_invoice_template", v)}>
+                        <SelectTrigger className="h-10 mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="template_1">🟠 Template 1 (Classic Amber)</SelectItem>
+                          <SelectItem value="template_2">🔵 Template 2 (Modern Royal Blue)</SelectItem>
+                          <SelectItem value="template_3">⚫ Template 3 (Minimalist Slate)</SelectItem>
+                          <SelectItem value="template_4">🟢 Template 4 (Premium Emerald)</SelectItem>
+                          <SelectItem value="template_5">🟣 Template 5 (Creative Tech Purple)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Packing List layout selector */}
+                    <div className="space-y-1.5">
+                      <Label className="text-[11px] font-bold">Default Packing List Format</Label>
+                      <Select value={form.packing_list_template || "template_1"} onValueChange={v => set("packing_list_template", v)}>
+                        <SelectTrigger className="h-10 mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="template_1">🟠 Template 1 (Classic Amber)</SelectItem>
+                          <SelectItem value="template_2">🔵 Template 2 (Modern Royal Blue)</SelectItem>
+                          <SelectItem value="template_3">⚫ Template 3 (Minimalist Slate)</SelectItem>
+                          <SelectItem value="template_4">🟢 Template 4 (Premium Emerald)</SelectItem>
+                          <SelectItem value="template_5">🟣 Template 5 (Creative Tech Purple)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Delivery Challan layout selector */}
+                    <div className="space-y-1.5">
+                      <Label className="text-[11px] font-bold">Default Delivery Challan Format</Label>
+                      <Select value={form.delivery_challan_template || "template_1"} onValueChange={v => set("delivery_challan_template", v)}>
+                        <SelectTrigger className="h-10 mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="template_1">🟠 Template 1 (Classic Amber)</SelectItem>
+                          <SelectItem value="template_2">🔵 Template 2 (Modern Royal Blue)</SelectItem>
+                          <SelectItem value="template_3">⚫ Template 3 (Minimalist Slate)</SelectItem>
+                          <SelectItem value="template_4">🟢 Template 4 (Premium Emerald)</SelectItem>
+                          <SelectItem value="template_5">🟣 Template 5 (Creative Tech Purple)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t border-border/40 pt-4 space-y-4">
+                  <div>
+                    <Label className="text-[11px] font-bold">{t('settings.terms_conditions') || 'Default Terms & Conditions'}</Label>
+                    <textarea
+                      className="w-full mt-1 bg-input border border-input rounded-md px-3 py-2 text-sm resize-none h-20 focus:outline-none focus:ring-1 focus:ring-ring"
+                      value={form.terms}
+                      onChange={e => set("terms", e.target.value)}
+                      placeholder={t('settings.terms_placeholder') || 'Terms text...'}
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="text-[11px] font-bold">Default Invoice Notes</Label>
+                    <textarea
+                      className="w-full mt-1 bg-input border border-input rounded-md px-3 py-2 text-sm resize-none h-20 focus:outline-none focus:ring-1 focus:ring-ring"
+                      value={form.invoice_notes}
+                      onChange={e => set("invoice_notes", e.target.value)}
+                      placeholder="Enter default notes to display on invoices..."
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="text-[11px] font-bold">Default Invoice Declaration</Label>
+                    <textarea
+                      className="w-full mt-1 bg-input border border-input rounded-md px-3 py-2 text-sm resize-none h-20 focus:outline-none focus:ring-1 focus:ring-ring"
+                      value={form.invoice_declaration}
+                      onChange={e => set("invoice_declaration", e.target.value)}
+                      placeholder="Enter default declaration text..."
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: Live Mock Preview */}
+              <div className="lg:col-span-7 border border-border/50 rounded-2xl p-4 bg-muted/10 space-y-4 flex flex-col">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <Monitor className="w-3.5 h-3.5 text-primary animate-pulse" /> Live Layout Preview
+                  </h4>
+                  {/* Selector tabs for preview type */}
+                  <div className="flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-border/50">
+                    <button
+                      type="button"
+                      onClick={() => setPreviewType("invoice")}
+                      className={cn("px-2.5 py-1 text-[10px] font-black rounded-md transition-all",
+                        previewType === "invoice" ? "bg-white dark:bg-black shadow-sm text-primary" : "text-muted-foreground"
+                      )}
+                    >
+                      Invoice
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewType("packing_list")}
+                      className={cn("px-2.5 py-1 text-[10px] font-black rounded-md transition-all",
+                        previewType === "packing_list" ? "bg-white dark:bg-black shadow-sm text-primary" : "text-muted-foreground"
+                      )}
+                    >
+                      Packing List
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewType("delivery_challan")}
+                      className={cn("px-2.5 py-1 text-[10px] font-black rounded-md transition-all",
+                        previewType === "delivery_challan" ? "bg-white dark:bg-black shadow-sm text-primary" : "text-muted-foreground"
+                      )}
+                    >
+                      Challan
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex-1 min-h-[480px] border border-border rounded-xl overflow-auto -webkit-overflow-scrolling-touch bg-white relative">
+                  <iframe
+                    srcDoc={generateInvoiceHTML(sampleInvoice, form, previewType, getPreviewTemplateId())}
+                    className="w-full h-full border-0 absolute inset-0"
+                    title="Layout Preview"
+                  />
+                </div>
+                
+                <div className="text-[10px] text-center text-muted-foreground font-semibold">
+                  💡 This is a live draft mockup. Select other formats above to see a real-time rendering.
+                </div>
+              </div>
             </div>
           </div>
         </TabsContent>

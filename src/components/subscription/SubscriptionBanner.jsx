@@ -54,7 +54,7 @@ export default function SubscriptionBanner() {
   return (
     <div className={`relative overflow-hidden rounded-xl shadow-lg transition-all duration-300 ${
       isExpired 
-        ? "bg-gradient-to-r from-red-600 to-rose-700 text-white" 
+        ? "bg-gradient-to-r from-[#059669] to-[#0F766E] text-white" 
         : "bg-gradient-to-r from-[#F97316] to-amber-500 text-white"
     }`}>
       {/* Background Pattern */}
@@ -73,15 +73,15 @@ export default function SubscriptionBanner() {
       <div className="relative px-5 py-3.5 flex flex-col sm:flex-row items-center gap-4">
         <div className="flex-1 flex items-center gap-3 w-full">
           <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm shrink-0">
-            {isExpired ? <Lock className="w-5 h-5 text-white" /> : <Crown className="w-5 h-5 text-white" />}
+            {isExpired ? <Crown className="w-5 h-5 text-white" /> : <Crown className="w-5 h-5 text-white" />}
           </div>
           <div>
             <h4 className="font-black text-base leading-none mb-1 shadow-black/10 text-shadow-sm">
-              {isExpired ? "Trial Expired" : "Free Trial Active"}
+              {isExpired ? "3 Months Completely Free, Use Unlimited" : "Free Trial Active"}
             </h4>
             <p className="text-white/90 text-[13px] font-medium leading-tight">
               {isExpired 
-                ? "Your access to premium features is locked."
+                ? "Enjoy unlimited access to all premium features without interruptions."
                 : "Upgrade your workspace to unlock unlimited invoices and advanced reports."}
             </p>
           </div>
@@ -102,8 +102,8 @@ export default function SubscriptionBanner() {
 
           <div className="flex items-center gap-2">
             <Link to="/subscription" className="shrink-0">
-              <Button size="sm" className="bg-white text-[#F97316] hover:bg-white/90 font-black text-xs h-8 px-4 shadow-sm transition-all hover:scale-105 active:scale-95">
-                {isExpired ? "Unlock Access" : "Upgrade Now"}
+              <Button size="sm" className={`bg-white hover:bg-white/90 font-black text-xs h-8 px-4 shadow-sm transition-all hover:scale-105 active:scale-95 ${isExpired ? "text-[#0F766E]" : "text-[#F97316]"}`}>
+                {isExpired ? "View Plans" : "Upgrade Now"}
               </Button>
             </Link>
             

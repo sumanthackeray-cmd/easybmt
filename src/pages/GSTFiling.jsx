@@ -1313,7 +1313,7 @@ export default function GSTFiling() {
             <div className="flex-1 overflow-y-auto space-y-4 text-xs scrollbar-thin">
               <div className="bg-secondary/45 border border-border/80 rounded-xl p-4 grid grid-cols-2 gap-4 font-bold text-muted-foreground">
                 <div>Filing Period: <span className="text-foreground">{selectedMonth}</span></div>
-                <div>Authorized Trade: <span className="text-foreground">{shopSettings.shop_name || "Vogats"}</span></div>
+                <div>Authorized Trade: <span className="text-foreground">{shopSettings.shop_name || "EasyBMT Shop"}</span></div>
                 <div>Supplier GSTIN: <span className="text-foreground">{shopSettings.gstin || "Not Registered"}</span></div>
                 <div>Total Invoices: <span className="text-foreground">{salesForMonth.length}</span></div>
               </div>

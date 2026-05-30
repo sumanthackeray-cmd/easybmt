@@ -3,46 +3,46 @@ import { getDoc, doc, setDoc, updateDoc, collection, query, where, getDocs } fro
 import { db, auth } from "@/firebase/config";
 import { base44 } from "@/api/base44Client";
 
+export function normalizeCompanyId(id) {
+  if (!id) return "";
+  let cleaned = id.trim().toUpperCase();
+  if (cleaned.includes("-")) return cleaned;
+  if (cleaned.length > 4 && /^\d{4}$/.test(cleaned.substring(cleaned.length - 4))) {
+    return cleaned.substring(0, cleaned.length - 4) + "-" + cleaned.substring(cleaned.length - 4);
+  }
+  return cleaned;
+}
 
 export async function prePopulateLoginCache(firebaseUser, companyId, userCode) {
   try {
-    // 1. Fetch all authentication resources and essential dashboard/inventory data in parallel
+    const normalizedCompanyId = normalizeCompanyId(companyId);
+    // 1. Fetch all authentication resources in parallel (awaited to resolve roles & permissions)
     const [usersList, roles, permissions, sensitiveFieldAccess] = await Promise.all([
       base44.entities.User.list().catch(e => { console.error("Error listing users in cache warmup:", e); return []; }),
       base44.entities.Role.list().catch(e => { console.error("Error listing roles in cache warmup:", e); return []; }),
       base44.entities.Permission.list().catch(e => { console.error("Error listing permissions in cache warmup:", e); return []; }),
-      base44.entities.SensitiveFieldAccess.list().catch(e => { console.error("Error listing sensitive field access in cache warmup:", e); return []; }),
-      
-      // Pre-fetch critical business data for instant loading
+      base44.entities.SensitiveFieldAccess.list().catch(e => { console.error("Error listing sensitive field access in cache warmup:", e); return []; })
+    ]);
+
+    // 2. Pre-fetch critical business data in the background (non-blocking)
+    Promise.all([
       base44.entities.Product.list().catch(e => { console.error("Error prefetching products:", e); return []; }),
       base44.entities.Customer.list().catch(e => { console.error("Error prefetching customers:", e); return []; }),
       base44.entities.Invoice.list("-created_date", 200).catch(e => { console.error("Error prefetching invoices:", e); return []; })
-    ]);
+    ]).catch(err => {
+      console.warn("Background prefetch failed:", err);
+    });
 
     let userRecord = usersList.find(u => u.id === firebaseUser.uid);
     
     if (!userRecord) {
-      // First registered user is the owner, others are cashiers
-      const isFirstUser = usersList.length === 0;
-      const defaultRole = isFirstUser ? "role-owner" : "role-cashier";
-      const defaultSalary = isFirstUser ? 150000 : 18000;
-      
-      userRecord = {
-        id: firebaseUser.uid,
-        name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
-        email: firebaseUser.email,
-        role_id: defaultRole,
-        branch_id: null,
-        is_active: true,
-        assigned_by: null,
-        assigned_at: new Date().toISOString(),
-        salary: defaultSalary
-      };
-      
-      try {
-        await base44.entities.User.create(userRecord);
-      } catch (e) {
-        console.error("Error creating user record in cache warmup:", e);
+      // 1. Try to fetch from Firestore directly to avoid overwriting existing staff profiles if Dexie is out of sync
+      const userDocRef = doc(db, `companies/${normalizedCompanyId}/users`, firebaseUser.uid);
+      const userDocSnap = await getDoc(userDocRef);
+      if (userDocSnap.exists()) {
+        userRecord = userDocSnap.data();
+      } else {
+        throw new Error(`User record not found in Firestore for UID: ${firebaseUser.uid} under Company: ${normalizedCompanyId}`);
       }
     }
 
@@ -105,14 +105,14 @@ export async function checkCompanyExists(companyId) {
 }
 
 export async function staffLogin(companyId, userCode, password) {
-  const formattedCompanyId = companyId.trim().toUpperCase();
+  const formattedCompanyId = normalizeCompanyId(companyId);
   const formattedUserCode = userCode.trim().toUpperCase();
 
   // 1. We skip checking if the company exists here because unauthenticated reads to Firestore are blocked.
   // If the company ID is wrong, the generated email won't match any user, and signInWithEmailAndPassword will fail naturally.
 
   // 2. Construct internal email
-  const internalEmail = `${formattedUserCode}@${formattedCompanyId.replace("-", "")}.easybmt.app`;
+  const internalEmail = `${formattedUserCode}@${formattedCompanyId.replace("-", "")}.easybmt.app`.toLowerCase();
 
   // 3. Authenticate with Firebase
   await setPersistence(auth, browserLocalPersistence);
@@ -155,33 +155,38 @@ export async function staffLogin(companyId, userCode, password) {
   localStorage.setItem("base44_access_token", tokenResult.token);
   localStorage.setItem("onboarding_completed", "true"); // Guarantee modal bypass
 
-  // 6. Create Session document in Firestore
+  // 6. Create Session document in Firestore (non-blocking background)
   const sessionId = doc(collection(db, "temp")).id; // generate unique ID
   localStorage.setItem("session_id", sessionId);
 
   const sessionRef = doc(db, `companies/${formattedCompanyId}/sessions`, sessionId);
-  await setDoc(sessionRef, {
+  setDoc(sessionRef, {
     uid: firebaseUser.uid,
     user_code: formattedUserCode,
     login_at: new Date().toISOString(),
     logout_at: null,
     ip: "127.0.0.1", // client-side fallback
     device: navigator.userAgent,
-    is_active: true
+    is_active: true,
+    companyId: formattedCompanyId
+  }).catch(err => {
+    console.error("Background session creation failed:", err);
   });
 
-  // 7. Update User's last login in Firestore
+  // 7. Update User's last login in Firestore (non-blocking background)
   const userRef = doc(db, `companies/${formattedCompanyId}/users`, firebaseUser.uid);
-  try {
-    await updateDoc(userRef, {
-      last_login: new Date().toISOString()
-    });
-  } catch (e) {
+  updateDoc(userRef, {
+    last_login: new Date().toISOString(),
+    companyId: formattedCompanyId
+  }).catch(e => {
     console.warn("Failed to update last_login, trying setDoc with merge", e);
-    await setDoc(userRef, {
-      last_login: new Date().toISOString()
-    }, { merge: true });
-  }
+    setDoc(userRef, {
+      last_login: new Date().toISOString(),
+      companyId: formattedCompanyId
+    }, { merge: true }).catch(err => {
+      console.error("Background user last_login write failed:", err);
+    });
+  });
 
   // Pre-populate caching layer instantly to support instant startup loading bypass
   await prePopulateLoginCache(firebaseUser, formattedCompanyId, formattedUserCode);
@@ -242,19 +247,21 @@ export async function ownerLogin(emailOrCompanyId, password) {
     }
   }
 
-  localStorage.setItem("company_id", companyId);
+  const normalizedCompanyId = normalizeCompanyId(companyId);
+
+  localStorage.setItem("company_id", normalizedCompanyId);
   localStorage.setItem("user_code", userCode);
   localStorage.setItem("base44_access_token", tokenResult.token);
   localStorage.setItem("onboarding_completed", "true"); // Guarantee modal bypass
 
   // Pre-populate caching layer instantly to support instant startup loading bypass
-  await prePopulateLoginCache(userCredential.user, companyId, userCode);
+  await prePopulateLoginCache(userCredential.user, normalizedCompanyId, userCode);
 
   return {
     user: userCredential.user,
     claims: {
       ...claims,
-      company_id: companyId,
+      company_id: normalizedCompanyId,
       role: role,
       user_code: userCode
     },

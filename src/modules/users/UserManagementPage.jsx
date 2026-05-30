@@ -110,6 +110,23 @@ export default function UserManagementPage() {
       });
 
       if (result.success) {
+        const newUid = result.uid || result.user?.uid || result.user?.id;
+        const { putLocal } = await import("@/lib/localDB");
+        await putLocal("users", {
+          id: newUid,
+          name: name.trim(),
+          email: internalEmail,
+          contact_email: contactEmail,
+          contact_mobile: contactMobile,
+          staff_id: staffId,
+          role_id: roleId,
+          branch_id: branchId || "MAIN",
+          is_active: true,
+          user_code: newUserCode,
+          salary: salary ? Number(salary) : 0,
+          isDeleted: false
+        });
+
         setSuccess(`User ${newUserCode} created successfully! Internal Email: ${internalEmail}`);
         setUserCode("");
         setName("");
@@ -151,6 +168,12 @@ export default function UserManagementPage() {
       });
 
       if (result.success) {
+        const { putLocal } = await import("@/lib/localDB");
+        await putLocal("users", {
+          ...userRecord,
+          is_active: nextStatus,
+          updated_date: new Date().toISOString()
+        });
         setSuccess(`User status updated to ${nextStatus ? "Active" : "Deactivated"}`);
         fetchUsers();
       } else {

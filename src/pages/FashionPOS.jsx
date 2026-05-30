@@ -831,7 +831,7 @@ export default function FashionPOS() {
       {/* POS Top Header */}
       <header className="relative bg-white dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800/80 px-3 flex items-center justify-between z-10 shrink-0 h-[30px] md:h-[35px] shadow-sm">
         <div className="flex items-center gap-2 md:gap-3 h-full">
-          <Link to="/">
+          <Link to="/dashboard">
             <Button 
               variant="ghost" 
               className="gap-1 h-5 md:h-7 px-1.5 md:px-2.5 text-[9px] md:text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:bg-slate-800 rounded-lg"

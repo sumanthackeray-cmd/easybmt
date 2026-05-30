@@ -454,7 +454,8 @@ service cloud.firestore {
     // Requires active membership + companyId payload integrity on writes
     match /companies/{companyId}/{collection}/{docId} {
       allow read: if isActiveMember(companyId);
-      allow write: if isActiveMember(companyId) && payloadHasCorrectCompanyId(companyId);
+      allow create, update: if isActiveMember(companyId) && payloadHasCorrectCompanyId(companyId);
+      allow delete: if isActiveMember(companyId);
     }
 
     // ══════════════════════════════════════════════════════════════════════════

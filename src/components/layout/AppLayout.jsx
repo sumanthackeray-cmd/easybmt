@@ -9,9 +9,20 @@ import AiCopilot from "@/components/dashboards/enterprise/AiCopilot";
 import InternalStaffChat from "@/components/layout/InternalStaffChat";
 import useKeyboardShortcuts from "@/hooks/useKeyboardShortcuts";
 
+import { useEffect } from "react";
+
 export default function AppLayout() {
   // Activate global keyboard shortcuts
   useKeyboardShortcuts();
+
+  useEffect(() => {
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.documentElement.style.overflow = "";
+      document.body.style.overflow = "";
+    };
+  }, []);
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background">

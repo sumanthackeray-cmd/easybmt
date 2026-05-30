@@ -178,6 +178,7 @@ const PAGE_SIZE = 500;
 // ======================================================
 
 const syncChannel = new BroadcastChannel("easybmt-sync");
+const pendingMutations = new Map(); // queueId -> { resolve, reject }
 
 export function broadcastMutation(type, payload) {
   try {
@@ -186,6 +187,11 @@ export function broadcastMutation(type, payload) {
       payload,
       timestamp: Date.now(),
     });
+    if (type === "LOCAL_PUT" || type === "SYNC_COMPLETE") {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("easybmt-data-updated"));
+      }
+    }
   } catch (e) {
     console.warn("Broadcast failed", e);
   }
@@ -645,6 +651,15 @@ export async function processOfflineQueue() {
           // If batch succeeds, delete all processed items from offline queue
           for (const item of batchOps) {
             await db.offlineQueue.delete(item.queueId);
+            
+            // Resolve locally if in same tab
+            const cb = pendingMutations.get(item.queueId);
+            if (cb) {
+              cb.resolve();
+              pendingMutations.delete(item.queueId);
+            }
+            // Broadcast to other tabs
+            broadcastMutation("QUEUE_PROCESSED", { queueId: item.queueId, success: true });
           }
 
         } catch (batchErr) {
@@ -678,6 +693,14 @@ export async function processOfflineQueue() {
 
               await db.offlineQueue.delete(item.queueId);
 
+              // Resolve locally
+              const cb = pendingMutations.get(item.queueId);
+              if (cb) {
+                cb.resolve();
+                pendingMutations.delete(item.queueId);
+              }
+              // Broadcast to other tabs
+              broadcastMutation("QUEUE_PROCESSED", { queueId: item.queueId, success: true });
 
             } catch (err) {
               errorLogger.captureError('OfflineQueue', err, {
@@ -687,7 +710,14 @@ export async function processOfflineQueue() {
                 retryCount: item.retryCount,
               });
 
-              const retryCount = (item.retryCount || 0) + 1;
+              const isPermanentError = 
+                err.message?.toLowerCase().includes("permission") ||
+                err.message?.toLowerCase().includes("forbidden") ||
+                err.message?.toLowerCase().includes("403") ||
+                err.message?.toLowerCase().includes("409") ||
+                err.message?.toLowerCase().includes("422");
+
+              const retryCount = isPermanentError ? MAX_RETRIES : ((item.retryCount || 0) + 1);
 
               if (retryCount >= MAX_RETRIES) {
                 await db.offlineQueue.update(item.queueId, {
@@ -695,6 +725,27 @@ export async function processOfflineQueue() {
                   retryCount,
                   lastError: err.message,
                 });
+
+                // Reject locally
+                const cb = pendingMutations.get(item.queueId);
+                if (cb) {
+                  cb.reject(err);
+                  pendingMutations.delete(item.queueId);
+                }
+                // Broadcast to other tabs
+                broadcastMutation("QUEUE_PROCESSED", { queueId: item.queueId, success: false, error: err.message });
+
+                // Dispatch global custom event for error warning toast
+                if (typeof window !== "undefined") {
+                  window.dispatchEvent(new CustomEvent("easybmt-sync-error", {
+                    detail: {
+                      entityName: item.entityName,
+                      action: item.action,
+                      error: err.message,
+                      id: item.id
+                    }
+                  }));
+                }
                 continue;
               }
 
@@ -900,12 +951,20 @@ export async function updateInventory(productId, branchId, quantityDelta, reason
 
   const saved = await putLocal("inventory", record);
 
-  await enqueueMutation("inventory", "UPDATE", saved.id, {
-    productId,
-    branchId: targetBranch,
-    quantity: saved.quantity,
-    stockDelta: quantityDelta,
-  });
+  if (navigator.onLine) {
+    const docRef = doc(firestoreDb, "companies", ctx.companyId, "inventory", saved.id);
+    await setDoc(docRef, {
+      ...saved,
+      companyId: ctx.companyId,
+    }, { merge: true });
+  } else {
+    await enqueueMutation("inventory", "UPDATE", saved.id, {
+      productId,
+      branchId: targetBranch,
+      quantity: saved.quantity,
+      stockDelta: quantityDelta,
+    });
+  }
 
   // Append inventory movement log (append-only ledger tracking)
   const movementRecord = {
@@ -923,7 +982,13 @@ export async function updateInventory(productId, branchId, quantityDelta, reason
   };
 
   await putLocal("inventoryMovements", movementRecord);
-  await enqueueMutation("inventoryMovements", "CREATE", movementRecord.id, movementRecord);
+
+  if (navigator.onLine) {
+    const docRef = doc(firestoreDb, "companies", ctx.companyId, "inventoryMovements", movementRecord.id);
+    await setDoc(docRef, movementRecord);
+  } else {
+    await enqueueMutation("inventoryMovements", "CREATE", movementRecord.id, movementRecord);
+  }
 }
 
 // ======================================================
@@ -935,12 +1000,11 @@ export async function validateAndReserveInventory(items, branchId) {
   const targetBranch = branchId || ctx.branchId;
   const updatedRecords = [];
 
-  await db.transaction("rw", db.inventory, db.shopSettings, db.products, db.offlineQueue, async () => {
-    // 1. Fetch shop settings to check negative stock preference
+  // 1. Perform local database operations safely under Dexie transaction
+  await db.transaction("rw", db.inventory, db.shopSettings, db.products, async () => {
     const settings = await db.shopSettings.where("companyId").equals(ctx.companyId).first();
     const allowNegative = settings ? !!settings.allow_negative_stock : false;
 
-    // 2. Process all products sequentially under transaction scope
     for (const item of items) {
       const productId = item.product_id || item.id;
       const qty = Number(item.qty || item.quantity || 1);
@@ -985,17 +1049,27 @@ export async function validateAndReserveInventory(items, branchId) {
         };
       }
 
-      // Safe update
       await db.inventory.put(record);
+      updatedRecords.push({ record, qty });
+    }
+  });
 
-      // Queue increment sync delta
+  // 2. Write directly to Firestore or enqueue offline queue outside the Dexie transaction block
+  for (const { record, qty } of updatedRecords) {
+    if (navigator.onLine) {
+      const docRef = doc(firestoreDb, "companies", ctx.companyId, "inventory", record.id);
+      await setDoc(docRef, {
+        ...record,
+        companyId: ctx.companyId,
+      }, { merge: true });
+    } else {
       await db.offlineQueue.add({
         companyId: ctx.companyId,
         entityName: "inventory",
         action: "UPDATE",
         id: record.id,
         data: {
-          productId,
+          productId: record.productId,
           branchId: targetBranch,
           quantity: record.quantity,
           stockDelta: -qty,
@@ -1006,15 +1080,14 @@ export async function validateAndReserveInventory(items, branchId) {
         nextRetryAt: nowUnix(),
         timestamp: nowUnix(),
       });
-      
-      updatedRecords.push(record);
     }
-  });
+  }
 
-  updatedRecords.forEach(rec => {
+  // 3. Broadcast changes
+  updatedRecords.forEach(({ record }) => {
     broadcastMutation("LOCAL_PUT", {
       storeName: "inventory",
-      id: rec.id,
+      id: record.id,
     });
   });
   
@@ -1038,6 +1111,46 @@ if (typeof window !== "undefined") {
 
 let syncIntervalRef = null;
 let inventoryUnsubscribe = null;
+let productUnsubscribe = null;
+
+export async function startRealtimeProductSync() {
+  if (productUnsubscribe) return;
+  const ctx = await getCompanyContext();
+  if (!ctx.companyId) return;
+
+  const colRef = collection(firestoreDb, "companies", ctx.companyId, "products");
+  
+  productUnsubscribe = onSnapshot(colRef, async (snapshot) => {
+    let changed = false;
+    await db.transaction("rw", db.products, async () => {
+      for (const docChange of snapshot.docChanges()) {
+        const data = docChange.doc.data();
+        if (docChange.type === 'added' || docChange.type === 'modified') {
+          const existing = await db.products.get(docChange.doc.id);
+          if (!existing || data.updated_date > (existing.updated_date || "")) {
+            await db.products.put({ 
+              id: docChange.doc.id, 
+              ...data,
+              companyId: ctx.companyId,
+              branchId: data.branchId || ctx.branchId || "main"
+            });
+            changed = true;
+          }
+        } else if (docChange.type === 'removed') {
+          const existing = await db.products.get(docChange.doc.id);
+          if (existing) {
+            await db.products.delete(docChange.doc.id);
+            changed = true;
+          }
+        }
+      }
+    });
+    
+    if (changed) {
+      broadcastMutation("SYNC_COMPLETE", { collectionName: "products" });
+    }
+  });
+}
 
 export async function startRealtimeInventorySync() {
   if (inventoryUnsubscribe) return;
@@ -1079,6 +1192,7 @@ export function startSyncEngine() {
   if (syncIntervalRef) return;
   
   startRealtimeInventorySync().catch(console.error);
+  startRealtimeProductSync().catch(console.error);
 
   syncIntervalRef = setInterval(() => {
     if (!navigator.onLine) return;
@@ -1095,6 +1209,10 @@ export function stopSyncEngine() {
   if (inventoryUnsubscribe) {
     inventoryUnsubscribe();
     inventoryUnsubscribe = null;
+  }
+  if (productUnsubscribe) {
+    productUnsubscribe();
+    productUnsubscribe = null;
   }
 }
 
@@ -1125,10 +1243,20 @@ export async function clearAllLocalData() {
 // ======================================================
 
 syncChannel.onmessage = async (event) => {
-  const { type } = event.data;
+  const { type, payload } = event.data;
   if (type === "LOCAL_PUT" || type === "SYNC_COMPLETE") {
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent("easybmt-data-updated"));
+    }
+  } else if (type === "QUEUE_PROCESSED") {
+    const cb = pendingMutations.get(payload.queueId);
+    if (cb) {
+      if (payload.success) {
+        cb.resolve();
+      } else {
+        cb.reject(new Error(payload.error));
+      }
+      pendingMutations.delete(payload.queueId);
     }
   }
 };

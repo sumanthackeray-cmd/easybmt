@@ -10,7 +10,7 @@ import { useBackButton } from "@/hooks/useBackButton";
 import { Users, MoreHorizontal, Bot } from "lucide-react";
 
 const BOTTOM_NAV = [
-  { path: "/", icon: LayoutDashboard, label: "Home", tKey: "nav.dashboard" },
+  { path: "/dashboard", icon: LayoutDashboard, label: "Home", tKey: "nav.dashboard" },
   { path: "/pos", icon: Zap, label: "POS", tKey: "nav.pos" },
   { path: "/invoices", icon: FileText, label: "Invoices", tKey: "nav.invoices" },
   { action: "open-ai-copilot", icon: Bot, label: "AI Copilot", tKey: "AI Copilot" },

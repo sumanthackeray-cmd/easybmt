@@ -8,10 +8,10 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useDragControls } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
+import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { hasPermission, PERMISSIONS } from "@/utils/rbac";
 const markdownComponents = {
   code({node, inline, className, children, ...props}) {
@@ -25,14 +25,24 @@ const markdownComponents = {
             <div className="w-full h-48 relative flex items-center justify-center shrink-0">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={data} cx="50%" cy="50%" innerRadius="50%" outerRadius="80%" paddingAngle={3} dataKey="value" stroke="none">
+                  <defs>
+                    <filter id="pieShadow" x="-20%" y="-20%" width="140%" height="140%">
+                      <feDropShadow dx="0" dy="4" stdDeviation="5" floodOpacity="0.25" />
+                    </filter>
+                    <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.9}/>
+                      <stop offset="95%" stopColor="#047857" stopOpacity={0.9}/>
+                    </linearGradient>
+                  </defs>
+                  <Pie data={data} cx="50%" cy="50%" innerRadius="55%" outerRadius="85%" paddingAngle={4} dataKey="value" stroke="none" filter="url(#pieShadow)">
                     {data.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} style={{ outline: 'none' }} />
                     ))}
                   </Pie>
                   <RechartsTooltip 
-                    contentStyle={{ borderRadius: '8px', fontSize: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                    itemStyle={{ color: '#1e293b', fontWeight: 'bold' }}
+                    contentStyle={{ borderRadius: '12px', fontSize: '13px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)', fontWeight: 'bold' }}
+                    itemStyle={{ color: '#1e293b' }}
+                    formatter={(value) => [`₹${Number(value).toLocaleString('en-IN')}`, 'Amount']}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -63,6 +73,7 @@ const markdownComponents = {
 };
 
 export default function AiCopilot() {
+  const dragControls = useDragControls();
   const [isOpen, setIsOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -391,13 +402,22 @@ export default function AiCopilot() {
       const currentCompanyId = user?.company_id || user?.companyId || localStorage.getItem('company_id') || 'default-tenant';
       
       // Filter cache lists to guarantee only current tenant's data is aggregated and prevent cross-tenant leak
-      const tenantInvoices = (invoices || []).filter(i => i.company_id === currentCompanyId || i.tenant_id === currentCompanyId || !i.company_id);
-      const tenantProducts = (products || []).filter(p => p.company_id === currentCompanyId || p.tenant_id === currentCompanyId || !p.company_id);
-      const tenantCustomers = (customers || []).filter(c => c.company_id === currentCompanyId || c.tenant_id === currentCompanyId || !c.company_id);
-      const tenantPurchases = (purchases || []).filter(p => p.company_id === currentCompanyId || p.tenant_id === currentCompanyId || !p.company_id);
-      const tenantExpenses = (expenses || []).filter(e => e.company_id === currentCompanyId || e.tenant_id === currentCompanyId || !e.company_id);
-      const tenantLoans = (loans || []).filter(l => l.company_id === currentCompanyId || l.tenant_id === currentCompanyId || !l.company_id);
-      const tenantEmployees = (employees || []).filter(e => e.company_id === currentCompanyId || e.tenant_id === currentCompanyId || !e.company_id);
+      const isTenantData = (item) => {
+        // Allow if it explicitly matches our tenant
+        if (item.companyId === currentCompanyId || item.company_id === currentCompanyId || item.tenant_id === currentCompanyId) return true;
+        // Reject if it explicitly belongs to another tenant
+        if (item.companyId || item.company_id || item.tenant_id) return false;
+        // Trust locally isolated Dexie data if no ID is stamped (legacy/offline records)
+        return true;
+      };
+
+      const tenantInvoices = (invoices || []).filter(isTenantData);
+      const tenantProducts = (products || []).filter(isTenantData);
+      const tenantCustomers = (customers || []).filter(isTenantData);
+      const tenantPurchases = (purchases || []).filter(isTenantData);
+      const tenantExpenses = (expenses || []).filter(isTenantData);
+      const tenantLoans = (loans || []).filter(isTenantData);
+      const tenantEmployees = (employees || []).filter(isTenantData);
       
       // Secure tenant-filtered company profile loading
       const activeProfile = settingsList?.find(s => s.company_id === currentCompanyId || s.tenant_id === currentCompanyId) || 
@@ -440,7 +460,7 @@ export default function AiCopilot() {
       const totalSalaryPayout = tenantEmployees.reduce((sum, emp) => sum + (Number(emp.salary) || 0), 0);
       const employeeCount = tenantEmployees.length;
 
-      const compName = activeProfile?.shop_name || activeProfile?.companyName || activeProfile?.business_name || "Kamlesh Enterprise";
+      const compName = activeProfile?.shop_name || activeProfile?.companyName || activeProfile?.business_name || user?.business_name || user?.company_name || "Your Enterprise";
       
       // 2. Strict RBAC Enforcement (Security Filter)
       const userRole = user?.role || "owner";
@@ -485,9 +505,10 @@ INSTRUCTIONS FOR AI:
 4. If asked about Inventory or Low Stock, provide the exact inventory value, mention the available products and their quantities, and state the low stock count. DO NOT just say "0 low stock", mention the existing products too!
 5. Answer concisely and perfectly in their preferred language (e.g., Hindi, Hinglish, English).
 6. Be highly professional, accurate, and insightful.
-7. CRITICAL RULE: If you are returning 2 or more related numeric data points (e.g., GST Collected vs Paid, Sales vs Expenses), you MUST visualize them using a beautiful graph. To draw a pie chart, output a markdown code block with the language \`piechart\` containing a JSON array of objects with \`name\` and \`value\` properties. Example:
+7. ABSOLUTE CRITICAL RULE: If you output ANY numeric data point, you MUST ALWAYS visualize it using a beautiful circle pie chart with context. For example, if asked for Today's Sales, don't just show 1 value; show "Today's Sales" vs "Today's Purchases" vs "Today's Expenses" to make the pie chart realistic and comparative!
+To draw the pie chart, output a markdown code block with the language \`piechart\` containing a JSON array of objects with \`name\` and \`value\` properties. Example:
 \`\`\`piechart
-[{"name": "Sales", "value": 5000}, {"name": "Expenses", "value": 2000}]
+[{"name": "Today's Sales", "value": 5000}, {"name": "Today's Expenses", "value": 2000}, {"name": "Today's Purchases", "value": 1500}]
 \`\`\``;
 
       const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
@@ -575,6 +596,8 @@ INSTRUCTIONS FOR AI:
       {isOpen && (
         <motion.div 
           drag={!isFullscreen && !isMobile}
+          dragControls={dragControls}
+          dragListener={false}
           dragMomentum={false}
           initial={{ opacity: 0, y: isMobile ? 300 : 40, scale: 0.96 }}
           animate={{ opacity: 1, y: 0, x: 0, scale: 1 }}
@@ -592,7 +615,15 @@ INSTRUCTIONS FOR AI:
           }}
         >
           {/* Top Sticky Header */}
-          <div className={`flex items-center justify-between px-4 pb-3 ai-header-premium shrink-0 ${isMobile || isFullscreen ? "pt-[calc(var(--safe-top,12px)+12px)]" : "pt-3"}`}>
+          <div 
+            className={`flex items-center justify-between px-4 pb-3 ai-header-premium shrink-0 ${isMobile || isFullscreen ? "pt-[calc(var(--safe-top,12px)+12px)]" : "pt-3"}`}
+            onPointerDown={(e) => {
+              if (!isFullscreen && !isMobile) {
+                dragControls.start(e);
+              }
+            }}
+            style={{ cursor: (!isFullscreen && !isMobile) ? 'grab' : 'default' }}
+          >
             <div className="flex items-center gap-3">
               {/* Bot Avatar Icon - Guaranteed high contrast purple color */}
               <div 

@@ -51,7 +51,7 @@ export default function Unauthorized() {
             className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white rounded-xl h-11 border-0 shadow-lg shadow-indigo-500/10"
             asChild
           >
-            <Link to="/">
+            <Link to="/dashboard">
               <Home className="w-4 h-4 mr-2" />
               Return to Dashboard
             </Link>

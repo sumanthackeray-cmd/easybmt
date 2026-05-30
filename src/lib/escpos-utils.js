@@ -536,7 +536,7 @@ export function generateEscPosPayload(invoice, shop, isDuplicate = false) {
     addLine("-".repeat(width), "center");
   }
 
-  const shopName = (!shop.shop_name || shop.shop_name === "Vogats") ? "EASYBMT SHOP" : shop.shop_name;
+  const shopName = !shop.shop_name ? "EASYBMT SHOP" : shop.shop_name;
   addLine(shopName, "center", true, true);
   if (shop.address) addLine(shop.address, "center");
   if (shop.gstin) addLine(`GSTIN: ${shop.gstin}`, "center");

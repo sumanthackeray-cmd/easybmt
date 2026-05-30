@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { fmtINR, fmtDate, isOverdue } from "@/lib/gst-utils";
@@ -35,6 +35,23 @@ export default function Invoices() {
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [previewInv, setPreviewInv] = useState(null);
+
+  // Instantly refresh invoices list and counter sequences on any local data modifications (e.g., POS checkout)
+  useEffect(() => {
+    let timeoutId = null;
+    const handleDataUpdated = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["invoices"] });
+        queryClient.invalidateQueries({ queryKey: ["shopSettings"] });
+      }, 100);
+    };
+    window.addEventListener("easybmt-data-updated", handleDataUpdated);
+    return () => {
+      window.removeEventListener("easybmt-data-updated", handleDataUpdated);
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [queryClient]);
 
   const { data: invoices = [] } = useQuery({
     queryKey: ["invoices"],
@@ -174,20 +191,24 @@ export default function Invoices() {
               docType = "inv";
             }
           }
-          const seqInfo = getDocumentSequence(docType, shopSettings);
+          const seqInfo = getDocumentSequence(docType, shopSettings, activeBranchId);
           // If attempts > 0, we temporarily bump it manually here to try again
           invoiceNumber = seqInfo.invoiceNumber;
           if (attempts > 0) {
             const nextSeqAttempt = seqInfo.nextSeq + attempts;
             const seqStr = String(nextSeqAttempt).padStart(3, '0');
-            const format = shopSettings[`${seqInfo.prefixKey}_format`] || "INV-SEQ";
+            const format = shopSettings[`${seqInfo.activePrefix || seqInfo.prefixKey}_format`] || "INV-SEQ";
             let formatted = format.replace("SEQ", seqStr);
             invoiceNumber = formatted; // Note: Date replacements missing here for retries, but fine for now
           }
           currentCounter = seqInfo.nextSeq + attempts;
-          seqKeyToUpdate = `${seqInfo.prefixKey}_seq`;
+          seqKeyToUpdate = `${seqInfo.activePrefix || seqInfo.prefixKey}_seq`;
+          const mainInvData = { ...formData };
+          delete mainInvData.create_packing_list;
+          delete mainInvData.create_delivery_challan;
+
           const newInvData = { 
-            ...formData, 
+            ...mainInvData, 
             invoice_number: invoiceNumber,
             branchId: activeBranchId || null
           };
@@ -213,6 +234,79 @@ export default function Invoices() {
         
         if (shopSettings.id && seqKeyToUpdate) {
           await base44.entities.ShopSettings.update(shopSettings.id, { [seqKeyToUpdate]: currentCounter });
+        }
+
+        // Create Packing List alongside invoice if checked
+        if (formData.create_packing_list) {
+          try {
+            const pkNumber = "PK-" + invoiceNumber;
+            const pkData = {
+              ...formData,
+              type: "packing_list",
+              invoice_number: pkNumber,
+              branchId: activeBranchId || null
+            };
+            delete pkData.create_packing_list;
+            delete pkData.create_delivery_challan;
+            const sanitizedPKData = JSON.parse(JSON.stringify(pkData, (k, v) => (v === undefined ? null : v)));
+            await base44.entities.Invoice.create(sanitizedPKData);
+          } catch (err) {
+            console.error("Failed to generate Packing List alongside invoice:", err);
+          }
+        }
+
+        // Create Delivery Challan alongside invoice if checked
+        if (formData.create_delivery_challan) {
+          try {
+            let delPrefix = "delivery";
+            if (activeBranchId && activeBranchId !== 'main' && activeBranchId !== 'all') {
+              const branchHasFormat = shopSettings[`${activeBranchId}_delivery_format`] !== undefined;
+              if (branchHasFormat) {
+                delPrefix = `${activeBranchId}_delivery`;
+              }
+            }
+            const delFormat = shopSettings[`${delPrefix}_format`] || "DEL-SEQ";
+            
+            // Format Delivery Challan number using the exact same counter as the parent Tax Invoice
+            const date = new Date();
+            const YY = String(date.getFullYear()).slice(-2);
+            const YYYY = String(date.getFullYear());
+            const currentMonth = date.getMonth();
+            let FY = "";
+            if (currentMonth >= 3) {
+              FY = `${YY}-${String(date.getFullYear() + 1).slice(-2)}`;
+            } else {
+              FY = `${String(date.getFullYear() - 1).slice(-2)}-${YY}`;
+            }
+            const MM = String(date.getMonth() + 1).padStart(2, '0');
+            const MMM = date.toLocaleString('default', { month: 'short' }).toUpperCase();
+            
+            const seqStr = String(currentCounter).padStart(3, '0');
+            let delNumber = delFormat.replace("SEQ", seqStr);
+            delNumber = delNumber.replace("YYYY", YYYY);
+            delNumber = delNumber.replace("YY", YY);
+            delNumber = delNumber.replace("FY", FY);
+            delNumber = delNumber.replace("MMM", MMM);
+            delNumber = delNumber.replace("MM", MM);
+
+            const delData = {
+              ...formData,
+              type: "delivery_challan",
+              invoice_number: delNumber,
+              branchId: activeBranchId || null
+            };
+            delete delData.create_packing_list;
+            delete delData.create_delivery_challan;
+            const sanitizedDelData = JSON.parse(JSON.stringify(delData, (k, v) => (v === undefined ? null : v)));
+            await base44.entities.Invoice.create(sanitizedDelData);
+            
+            const delSeqKey = `${delPrefix}_seq`;
+            if (shopSettings.id && delSeqKey) {
+              await base44.entities.ShopSettings.update(shopSettings.id, { [delSeqKey]: currentCounter });
+            }
+          } catch (err) {
+            console.error("Failed to generate Delivery Challan alongside invoice:", err);
+          }
         }
 
         // 1. Update customer total purchases
@@ -288,7 +382,7 @@ export default function Invoices() {
     const loadingToast = toast.loading(t("invoices.toast_pdf_generating"));
     try {
       const pdfUrl = await generateAndUploadInvoicePDF(inv, shopSettings, true);
-      const shopName = (!shopSettings.shop_name || shopSettings.shop_name === "Vogats") ? "EASYBMT SHOP" : shopSettings.shop_name;
+      const shopName = (!shopSettings.shop_name) ? "EASYBMT SHOP" : shopSettings.shop_name;
       const docName = inv.type === "proforma" ? "Proforma Invoice" : inv.type === "quotation" ? "Quotation" : "Invoice";
       const msg = `🏪 *${shopName}*\n🧾 ${docName}: *${inv.invoice_number}*\n\nDear *${inv.customer_name}*,\n\nHere is your ${docName.toLowerCase()} summary:\n📅 Date: ${inv.date}\n💰 Amount: *₹${(inv.grand_total || 0).toFixed(2)}*\n📊 Status: ${inv.status?.toUpperCase()}\n\n📁 *Download PDF:* ${pdfUrl}\n\nThank you! 🙏`;
       const ph = (inv.customer_phone || "").replace(/\D/g, "");
@@ -442,74 +536,166 @@ export default function Invoices() {
       <WhatsAppPanel invoices={invoices} shopSettings={shopSettings} />
 
       {/* Invoice List */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {filtered.length === 0 && (
-          <div className="text-center py-16 text-muted-foreground col-span-full">
-            <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p>{t("invoices.no_invoices")}</p>
-          </div>
-        )}
-        {filtered.map(inv => {
-          const ov = isOverdue(inv);
-          const isNote = inv.type === "credit_note" || inv.type === "debit_note";
-          return (
-            <div key={inv.id} className="bg-card border border-border rounded-xl p-4 hover:border-primary/20 transition-all flex flex-col justify-between">
-              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <span className="font-black text-sm font-mono">{inv.invoice_number}</span>
-                    {isNote ? (
-                      <Badge variant="outline" className={inv.type === "credit_note" ? "border-success/30 text-success" : "border-warning/30 text-warning"}>
-                        {inv.type === "credit_note" ? t("invoices.credit_note").toUpperCase() : t("invoices.debit_note").toUpperCase()}
-                      </Badge>
-                    ) : inv.type === "proforma" ? (
-                      <Badge variant="outline" className="border-info/30 text-info">PROFORMA</Badge>
-                    ) : inv.type === "quotation" ? (
-                      <Badge variant="outline" className="border-purple/30 text-purple">QUOTATION</Badge>
-                    ) : (
-                      <Badge variant="outline" className={`text-[10px] ${inv.status === "paid" ? "border-success/30 text-success" : ov ? "border-destructive/30 text-destructive" : "border-warning/30 text-warning"}`}>
-                        {ov ? t("invoices.overdue").toUpperCase() : t(`invoices.${inv.status}`).toUpperCase()}
-                      </Badge>
-                    )}
-                    {inv.waybill_no && <Badge variant="outline" className="border-info/30 text-info text-[10px]">🚚 {inv.waybill_no}</Badge>}
-                    {inv.is_interstate && <Badge variant="outline" className="border-purple/30 text-purple text-[10px]">{t("invoices.interstate")}</Badge>}
-                  </div>
-                  <p className="font-semibold text-[14px]">{inv.customer_name}</p>
-                  <p className="text-[12px] text-muted-foreground">📅 {fmtDate(inv.date)} · {t("invoices.due")}: {fmtDate(inv.due_date)}</p>
-                  {ov && <p className="text-[11px] text-destructive font-bold mt-1">⚠️ {Math.floor((new Date() - new Date(inv.due_date)) / 86400000)} {t("invoices.days_overdue")}</p>}
+      <div className="space-y-6">
+        {(() => {
+          const getGroupKey = (inv) => {
+            const num = inv.invoice_number || "";
+            const match = num.match(/(\d+)$/);
+            const serial = match ? match[1] : num;
+            const dateStr = inv.date || "";
+            const custName = (inv.customer_name || "").toLowerCase().trim();
+            return `${custName}_${dateStr}_${serial}`;
+          };
+
+          const groupedMap = {};
+          filtered.forEach(inv => {
+            const key = getGroupKey(inv);
+            if (!groupedMap[key]) {
+              groupedMap[key] = {
+                invoice: null,
+                delivery_challan: null,
+                packing_list: null,
+                created_date: inv.created_date || inv.date || "",
+                key: key
+              };
+            }
+            
+            const type = inv.type || "invoice";
+            if (type === "packing_list") {
+              groupedMap[key].packing_list = inv;
+            } else if (type === "delivery_challan" || type === "delivery") {
+              groupedMap[key].delivery_challan = inv;
+            } else {
+              groupedMap[key].invoice = inv;
+            }
+          });
+
+          const sortedGroups = Object.values(groupedMap).sort((a, b) => {
+            return b.created_date.localeCompare(a.created_date);
+          });
+
+          const renderCard = (inv, docTypeLabel, themeColorClass) => {
+            if (!inv) {
+              return (
+                <div className="border border-dashed border-border/60 rounded-xl p-6 bg-muted/5 flex flex-col items-center justify-center min-h-[165px] text-center transition-all hover:bg-muted/10">
+                  <span className={`text-[9px] font-bold ${themeColorClass} px-2 py-0.5 rounded uppercase tracking-wider mb-2`}>
+                    {docTypeLabel}
+                  </span>
+                  <p className="text-muted-foreground/35 text-[10px] font-semibold">Not Generated</p>
                 </div>
-                <div className="text-right shrink-0">
-                  <p className={`text-xl font-black font-mono ${inv.status === "paid" ? "text-success" : ov ? "text-destructive" : "text-primary"}`}>
-                    {fmtINR(inv.grand_total)}
-                  </p>
-                  {inv.paid_amount > 0 && inv.status !== "paid" && (
-                    <p className="text-[11px] text-muted-foreground">{t("invoices.paid")}: {fmtINR(inv.paid_amount)}</p>
+              );
+            }
+
+            const ov = isOverdue(inv);
+            const isNote = inv.type === "credit_note" || inv.type === "debit_note";
+            const isChallan = inv.type === "delivery_challan" || inv.type === "delivery";
+            const isPacking = inv.type === "packing_list";
+
+            return (
+              <div key={inv.id} className="bg-card border border-border rounded-xl p-4 hover:border-primary/20 transition-all flex flex-col justify-between min-h-[165px] shadow-sm">
+                <div>
+                  <div className="flex items-center justify-between gap-2 flex-wrap mb-2.5">
+                    <span className={`text-[9px] font-black ${themeColorClass} px-2 py-0.5 rounded uppercase tracking-widest`}>
+                      {docTypeLabel}
+                    </span>
+                    <span className="font-black text-xs font-mono text-muted-foreground">{inv.invoice_number}</span>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-[13px] text-foreground truncate">{inv.customer_name}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        📅 {fmtDate(inv.date)} · {t("invoices.due")}: {fmtDate(inv.due_date)}
+                      </p>
+                      {ov && !isPacking && !isChallan && (
+                        <p className="text-[9px] text-destructive font-bold mt-1">
+                          ⚠️ {Math.floor((new Date() - new Date(inv.due_date)) / 86400000)} {t("invoices.days_overdue")}
+                        </p>
+                      )}
+                    </div>
+                    
+                    {!isPacking && (
+                      <div className="text-right shrink-0">
+                        <p className={`text-base font-black font-mono ${inv.status === "paid" ? "text-success" : ov && !isChallan ? "text-destructive" : "text-primary"}`}>
+                          {fmtINR(inv.grand_total)}
+                        </p>
+                        {inv.paid_amount > 0 && inv.status !== "paid" && (
+                          <p className="text-[10px] text-muted-foreground">{t("invoices.paid")}: {fmtINR(inv.paid_amount)}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex gap-2 flex-wrap mt-3 pt-3 border-t border-border/60">
+                  <Button size="xs" variant="ghost" className="h-7 text-[10px] px-2 py-1" onClick={() => { setEditing(inv); setFormType(inv.type || "sale"); setShowForm(true); }}>
+                    ✏️ {t("common.edit")}
+                  </Button>
+                  <Button size="xs" variant="outline" className="gap-1 h-7 text-[10px] px-2 py-1" onClick={() => setPreviewInv(inv)}>
+                    <Eye className="w-2.5 h-2.5" /> {t("invoices.view")}
+                  </Button>
+                  <Button size="xs" variant="outline" className="gap-1 h-7 text-[10px] px-2 py-1" onClick={() => shareWhatsApp(inv)}>
+                    <MessageCircle className="w-2.5 h-2.5" /> WhatsApp
+                  </Button>
+                  <Button size="xs" variant="outline" className="gap-1 h-7 text-[10px] px-2 py-1" onClick={() => handleDownload(inv)}>
+                    <Download className="w-2.5 h-2.5" /> Download
+                  </Button>
+                  {inv.status !== "paid" && !isNote && inv.type !== "proforma" && inv.type !== "quotation" && !isPacking && (
+                    <Button size="xs" variant="outline" className="gap-1 border-success/30 text-success hover:bg-success/10 h-7 text-[10px] px-2 py-1" onClick={() => markPaid(inv)}>
+                      <Check className="w-2.5 h-2.5" /> {t("invoices.mark_paid")}
+                    </Button>
                   )}
                 </div>
               </div>
+            );
+          };
 
-              <div className="flex gap-2 flex-wrap mt-3 pt-3 border-t border-border">
-                <Button size="sm" variant="ghost" onClick={() => { setEditing(inv); setFormType(inv.type || "sale"); setShowForm(true); }}>
-                  ✏️ {t("common.edit")}
-                </Button>
-                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setPreviewInv(inv)}>
-                  <Eye className="w-3 h-3" /> {t("invoices.view")}
-                </Button>
-                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => shareWhatsApp(inv)}>
-                  <MessageCircle className="w-3 h-3" /> WhatsApp
-                </Button>
-                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => handleDownload(inv)}>
-                  <Download className="w-3 h-3" /> Download
-                </Button>
-                {inv.status !== "paid" && !isNote && inv.type !== "proforma" && inv.type !== "quotation" && (
-                  <Button size="sm" variant="outline" className="gap-1.5 border-success/30 text-success hover:bg-success/10" onClick={() => markPaid(inv)}>
-                    <Check className="w-3 h-3" /> {t("invoices.mark_paid")}
-                  </Button>
-                )}
+          if (sortedGroups.length === 0) {
+            return (
+              <div className="text-center py-16 text-muted-foreground">
+                <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p>{t("invoices.no_invoices")}</p>
+              </div>
+            );
+          }
+
+          return sortedGroups.map((group) => (
+            <div key={group.key} className="bg-slate-50/40 dark:bg-slate-900/10 border border-border/50 rounded-2xl p-4 md:p-5 space-y-4 shadow-sm hover:shadow-md transition-shadow">
+              {/* Group Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/30 pb-3">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <span className="font-extrabold text-[10px] text-indigo-600 dark:text-indigo-400 uppercase tracking-widest bg-indigo-50 dark:bg-indigo-950/30 px-2.5 py-1 rounded-lg border border-indigo-100 dark:border-indigo-900/50">
+                    Linked Billing Flow
+                  </span>
+                  <span className="text-[11px] text-muted-foreground font-bold flex items-center gap-1">
+                    📅 {fmtDate(group.created_date)}
+                  </span>
+                </div>
+                <div className="text-[10px] font-mono font-bold text-slate-400">
+                  Key: {group.key}
+                </div>
+              </div>
+              
+              {/* 3-Column Structured Layout */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Column 1: Tax Invoice */}
+                <div>
+                  {renderCard(group.invoice, "📄 Tax Invoice", "text-blue-600 bg-blue-500/10 dark:text-blue-400")}
+                </div>
+
+                {/* Column 2: Delivery Challan */}
+                <div>
+                  {renderCard(group.delivery_challan, "🚚 Delivery Challan", "text-emerald-600 bg-emerald-500/10 dark:text-emerald-400")}
+                </div>
+
+                {/* Column 3: Packing List */}
+                <div>
+                  {renderCard(group.packing_list, "📦 Packing List", "text-indigo-600 bg-indigo-500/10 dark:text-indigo-400")}
+                </div>
               </div>
             </div>
-          );
-        })}
+          ));
+        })()}
       </div>
 
       {showForm && (

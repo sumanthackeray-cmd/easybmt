@@ -27,7 +27,7 @@ export function ProductForm({ open, onOpenChange, product, onSave, businessType 
     gst_effective_date: product?.gst_effective_date || "",
     mrp: product?.mrp || 0,
     rate: product?.rate || 0,
-    purchase_rate: product?.purchase_rate || 0,
+    purchase_rate: product?.purchase_rate || product?.purchase_price || 0,
     wholesale_price: product?.wholesale_price || 0,
     stock: product?.stock || 0,
     min_stock: product?.min_stock || 10,
@@ -366,7 +366,7 @@ export function ProductForm({ open, onOpenChange, product, onSave, businessType 
         gst_effective_date: product.gst_effective_date || "",
         mrp: product.mrp || 0,
         rate: product.rate || 0,
-        purchase_rate: product.purchase_rate || 0,
+        purchase_rate: product.purchase_rate || product.purchase_price || 0,
         wholesale_price: product.wholesale_price || 0,
         stock: product.stock || 0,
         min_stock: product.min_stock || 10,
@@ -413,6 +413,8 @@ export function ProductForm({ open, onOpenChange, product, onSave, businessType 
     try {
       await onSave({
         ...form,
+        purchase_price: Number(form.purchase_rate || 0),
+        purchase_rate: Number(form.purchase_rate || 0),
         total_sellable_units: totalSellableUnits,
         price_per_unit: Number(pricePerUnit),
       });

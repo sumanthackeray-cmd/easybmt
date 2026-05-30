@@ -239,6 +239,21 @@ export default function Inventory() {
   const queryClient = useQueryClient();
   const [activeSubTab, setActiveSubTab] = useState("catalog"); // catalog | analytics | cycle-count | indents | purchase-orders
   
+  // Instantly refresh products list on any local database change (edit, save, sync)
+  useEffect(() => {
+    let timeoutId = null;
+    const handleDataUpdated = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["products"] });
+      }, 100);
+    };
+    window.addEventListener("easybmt-data-updated", handleDataUpdated);
+    return () => {
+      window.removeEventListener("easybmt-data-updated", handleDataUpdated);
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [queryClient]);
   // ─── Material Indents State ───
   const [showIndentForm, setShowIndentForm] = useState(false);
   const [editingIndent, setEditingIndent] = useState(null);
@@ -414,7 +429,7 @@ export default function Inventory() {
 
   const handlePrintIndent = (indent) => {
     const shopSettings = settings[0] || {};
-    const shopName = (!shopSettings.shop_name || shopSettings.shop_name === "Vogats") ? "EASYBMT SHOP" : shopSettings.shop_name;
+    const shopName = (!shopSettings.shop_name) ? "EASYBMT SHOP" : shopSettings.shop_name;
     const printWindow = window.open('', '_blank');
     const itemsHtml = (indent.items || []).map(item => `
       <tr>
@@ -502,7 +517,7 @@ export default function Inventory() {
 
   const handlePrintPO = (po) => {
     const shopSettings = settings[0] || {};
-    const shopName = (!shopSettings.shop_name || shopSettings.shop_name === "Vogats") ? "EASYBMT SHOP" : shopSettings.shop_name;
+    const shopName = (!shopSettings.shop_name) ? "EASYBMT SHOP" : shopSettings.shop_name;
     const printWindow = window.open('', '_blank');
     const itemsHtml = (po.items || []).map(item => `
       <tr>
@@ -838,10 +853,10 @@ export default function Inventory() {
   const businessType = shopSettings.business_type || "retail";
 
   const products = useMemo(() => {
-    if (!activeBranchId || branchInventory.length === 0) return rawProducts;
+    if (!activeBranchId) return rawProducts;
     return rawProducts.map(p => {
       const inv = branchInventory.find(i => i.productId === p.id);
-      return { ...p, stock: inv ? inv.quantity : 0 };
+      return { ...p, stock: inv ? inv.quantity : (p.stock ?? 0) };
     });
   }, [rawProducts, branchInventory, activeBranchId]);
 

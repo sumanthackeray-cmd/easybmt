@@ -29,6 +29,7 @@ const decryptPassword = (enc) => {
   return enc;
 };
 import { manageStaffUser } from "@/firebase/functions";
+import { db as dexieDb, putLocal, broadcastMutation } from "@/lib/localDB";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -66,6 +67,22 @@ export default function UsersSettings() {
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [isEmployeeDropdownOpen, setIsEmployeeDropdownOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+
+  React.useEffect(() => {
+    if (companyId && (currentUserRole === "admin" || currentUserRole === "owner" || currentUser?.role_id === "role-owner")) {
+      import("firebase/firestore").then(({ collection, getDocs }) => {
+        import("@/api/firebase").then(({ db: firestoreDb }) => {
+          getDocs(collection(firestoreDb, "companies", companyId, "users")).then((snap) => {
+            snap.forEach(docSnap => {
+              const data = docSnap.data();
+              dexieDb.users.put({ ...data, companyId, isDeleted: false, version: 1 }).catch(() => {});
+            });
+            queryClient.invalidateQueries({ queryKey: ["users"] });
+          });
+        });
+      });
+    }
+  }, [companyId, currentUserRole]);
 
   // Query users list
   const { data: users = [], isLoading: isLoadingUsers, refetch: refetchUsers } = useQuery({
@@ -193,7 +210,7 @@ export default function UsersSettings() {
     setSaving(true);
     try {
       const selectedRole = AVAILABLE_ROLES.find(r => r.id === form.role_id);
-      const isPrimaryOwner = currentUser?.email?.toLowerCase().includes("kksp010452");
+      const isPrimaryOwner = currentUser?.role_id === 'role-owner' || currentUserRole === 'admin';
       if (!isPrimaryOwner && (!selectedRole || selectedRole.hierarchy_level <= currentHierarchy)) {
         throw new Error("403 Forbidden: You cannot assign a role equal to or higher than your own.");
       }
@@ -228,6 +245,23 @@ export default function UsersSettings() {
         }
 
         await manageStaffUser(updateParams);
+
+        try {
+          await dexieDb.users.update(editingUser.id, {
+            name: empName.trim(),
+            email: internalEmail,
+            contact_email: empContactEmail.trim().toLowerCase(),
+            contact_mobile: empContactMobile.trim(),
+            salary: empSalary || 0,
+            user_code: newUserCode,
+            role_id: form.role_id,
+            branch_id: form.branch_id,
+            staff_id: form.staff_id,
+            updated_date: new Date().toISOString()
+          });
+        } catch (dexieErr) {
+          console.warn("Failed to inject user update into local cache", dexieErr);
+        }
 
         const oldEmpId = editingUser.id;
         const newEmpId = selectedEmployee.id;
@@ -322,7 +356,7 @@ export default function UsersSettings() {
         });
 
         if (result.success) {
-          const newUid = result.user?.uid || result.user?.id;
+          const newUid = result.uid || result.user?.uid || result.user?.id;
           const oldEmpId = selectedEmployee.id;
 
           const updatedEmployeeData = {
@@ -369,6 +403,25 @@ export default function UsersSettings() {
             }
           }
 
+          try {
+            await putLocal("users", {
+              id: newUid,
+              name: empName.trim(),
+              email: internalEmail,
+              contact_email: empContactEmail,
+              contact_mobile: empContactMobile,
+              staff_id: form.staff_id,
+              role_id: form.role_id,
+              branch_id: form.branch_id,
+              is_active: true,
+              user_code: newUserCode,
+              salary: empSalary || 0,
+              isDeleted: false
+            });
+          } catch (dexieErr) {
+            console.warn("Failed to inject new user into local cache", dexieErr);
+          }
+
           toast.success(`Staff user ${newUserCode} created and synchronized with HR module successfully!`);
         } else {
           throw new Error(result.message || "Failed to create user.");
@@ -400,8 +453,8 @@ export default function UsersSettings() {
 
   const handleToggleActive = async (targetUser) => {
     const targetRoleObj = AVAILABLE_ROLES.find(r => r.id === targetUser.role_id) || { hierarchy_level: 7 };
-    const isPrimaryOwner = currentUser?.email?.toLowerCase().includes("kksp010452");
-    const isTargetPrimaryOwner = targetUser.email?.toLowerCase().includes("kksp010452");
+    const isPrimaryOwner = currentUser?.role_id === 'role-owner' || currentUserRole === 'admin';
+    const isTargetPrimaryOwner = targetUser.role_id === 'role-owner' && targetUser.user_code?.toUpperCase() === 'ADMIN-001';
 
     if (isTargetPrimaryOwner) {
       return toast.error("Access Denied: The primary owner account is protected and cannot be modified.");
@@ -422,6 +475,13 @@ export default function UsersSettings() {
 
       if (result.success) {
         toast.success(`${targetUser.name} has been ${nextStatus ? "Activated" : "Deactivated"}!`);
+        try {
+          await dexieDb.users.update(targetUser.id, {
+            is_active: nextStatus,
+            updated_date: new Date().toISOString()
+          });
+          broadcastMutation("LOCAL_PUT", { storeName: "users", id: targetUser.id });
+        } catch (dexieErr) {}
         queryClient.invalidateQueries({ queryKey: ["users"] });
         refetchUsers();
       } else {
@@ -436,8 +496,8 @@ export default function UsersSettings() {
     if (!window.confirm(`Are you sure you want to permanently delete user ${targetUser.name}? This action cannot be undone.`)) return;
 
     const targetRoleObj = AVAILABLE_ROLES.find(r => r.id === targetUser.role_id) || { hierarchy_level: 7 };
-    const isPrimaryOwner = currentUser?.email?.toLowerCase().includes("kksp010452");
-    const isTargetPrimaryOwner = targetUser.email?.toLowerCase().includes("kksp010452");
+    const isPrimaryOwner = currentUser?.role_id === 'role-owner' || currentUserRole === 'admin';
+    const isTargetPrimaryOwner = targetUser.role_id === 'role-owner' && targetUser.user_code?.toUpperCase() === 'ADMIN-001';
 
     if (isTargetPrimaryOwner) {
       return toast.error("Access Denied: The primary owner account is protected and cannot be modified.");
@@ -456,6 +516,10 @@ export default function UsersSettings() {
 
       if (result.success) {
         toast.success(`${targetUser.name} has been deleted successfully!`);
+        try {
+          await dexieDb.users.where("id").equals(targetUser.id).delete();
+          broadcastMutation("LOCAL_PUT", { storeName: "users", id: targetUser.id });
+        } catch (dexieErr) {}
         queryClient.invalidateQueries({ queryKey: ["users"] });
         refetchUsers();
       } else {
@@ -757,7 +821,7 @@ export default function UsersSettings() {
 
               <Button 
                 type="submit" 
-                className="w-full font-bold gold-gradient text-black mt-2 shadow-lg shadow-amber-500/10"
+                className="w-full font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 mt-2"
                 disabled={isRosterEmpty || saving || assignableRoles.length === 0}
               >
                 {saving ? (editingUser ? "Saving..." : "Provisioning...") : editingUser ? "Update Staff Member" : "Provision Staff Member"}
@@ -808,7 +872,7 @@ export default function UsersSettings() {
               {users.map((staff) => {
                 const staffRoleObj = AVAILABLE_ROLES.find(r => r.id === staff.role_id) || { hierarchy_level: 7, label: "Cashier" };
                 const staffLevel = staffRoleObj.hierarchy_level;
-                const isProtected = staff.email?.toLowerCase().includes("kksp010452");
+                const isProtected = staff.role_id === 'role-owner' && staff.user_code?.toUpperCase() === 'ADMIN-001';
                 
                 const currentEmp = employees.find(e => e.id === staff.id);
                 const displayDesignation = currentEmp?.designation || currentEmp?.designation_id || staffRoleObj.label;

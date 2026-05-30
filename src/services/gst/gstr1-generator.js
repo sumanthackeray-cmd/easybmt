@@ -98,7 +98,7 @@ export function buildGSTR1CSVRows(salesInvoices, gstin, shopName) {
     ["GSTIN of Supplier", "Trade Name", "Invoice No", "Invoice Date", "Invoice Value", "Taxable Value", "IGST", "CGST", "SGST"],
     ...salesInvoices.map((inv) => [
       gstin || "",
-      shopName === "Vogats" ? "" : (shopName || ""),
+      shopName || "",
       inv.invoice_number,
       fmtDate(inv.date),
       inv.grand_total,

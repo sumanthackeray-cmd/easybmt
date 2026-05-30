@@ -181,24 +181,20 @@ service cloud.firestore {
     }
 
     // ── INVENTORY ─────────────────────────────────────────────────────────────
-    // Cashiers: read only (no stock manipulation)
-    // warehouse_manager + store_manager + admin: full CRUD
+    // Active company members: read + write
     match /companies/{companyId}/inventory/{docId} {
       allow read: if isActiveMember(companyId) && branchMatch(companyId);
-      allow create, update: if isInventoryRole(companyId) &&
-                               writeBranchMatch(companyId) &&
-                               payloadHasCorrectCompanyId(companyId);
-      allow delete: if isAdmin(companyId);
+      allow create, update, delete: if isActiveMember(companyId) &&
+                                       writeBranchMatch(companyId) &&
+                                       payloadHasCorrectCompanyId(companyId);
     }
 
     // ── PRODUCTS ─────────────────────────────────────────────────────────────
-    // Cashiers: read only (purchase_price masked by client, but also blocked here)
-    // warehouse + store + admin: full CRUD
+    // Active company members: read + write
     match /companies/{companyId}/products/{docId} {
       allow read: if isActiveMember(companyId);
-      allow create, update: if isInventoryRole(companyId) &&
-                               payloadHasCorrectCompanyId(companyId);
-      allow delete: if isAdmin(companyId);
+      allow create, update, delete: if isActiveMember(companyId) &&
+                                       payloadHasCorrectCompanyId(companyId);
     }
 
     // ── CUSTOMERS ─────────────────────────────────────────────────────────────
@@ -365,7 +361,7 @@ service cloud.firestore {
     // ── INVENTORY JOURNAL (append-only) ─────────────────────────────────────
     match /companies/{companyId}/inventoryMovements/{docId} {
       allow read: if isActiveMember(companyId) && branchMatch(companyId);
-      allow create: if isInventoryRole(companyId) &&
+      allow create: if isActiveMember(companyId) &&
                        writeBranchMatch(companyId) &&
                        payloadHasCorrectCompanyId(companyId);
       allow update, delete: if false;
@@ -388,7 +384,8 @@ service cloud.firestore {
     // Requires active membership + companyId payload integrity on writes
     match /companies/{companyId}/{collection}/{docId} {
       allow read: if isActiveMember(companyId);
-      allow write: if isActiveMember(companyId) && payloadHasCorrectCompanyId(companyId);
+      allow create, update: if isActiveMember(companyId) && payloadHasCorrectCompanyId(companyId);
+      allow delete: if isActiveMember(companyId);
     }
 
     // ══════════════════════════════════════════════════════════════════════════

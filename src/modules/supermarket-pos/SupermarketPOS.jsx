@@ -58,11 +58,18 @@ export default function SupermarketPOS() {
 
   // Lightweight local event listener to react instantly to IndexedDB modifications
   useEffect(() => {
+    let timeoutId = null;
     const handleDataUpdated = () => {
-      queryClient.invalidateQueries({ queryKey: ["products"] });
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["products"] });
+      }, 100);
     };
     window.addEventListener("easybmt-data-updated", handleDataUpdated);
-    return () => window.removeEventListener("easybmt-data-updated", handleDataUpdated);
+    return () => {
+      window.removeEventListener("easybmt-data-updated", handleDataUpdated);
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, [queryClient]);
 
   const { data: activeOffers = [] } = useQuery({
@@ -1546,7 +1553,7 @@ function Terminal({ activeSession, products, activeOffers, loyaltyCards, custome
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border-t border-slate-200/50 dark:border-slate-800/50 px-2 flex justify-around items-end pb-1.5 z-30 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] h-[46px]">
         {/* Home/Dashboard */}
         <Link
-          to="/"
+          to="/dashboard"
           className="flex flex-col items-center justify-end flex-1 gap-1 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all h-full"
         >
           <Store className="w-4 h-4 mb-0.5" />

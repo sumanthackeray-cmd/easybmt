@@ -71,7 +71,7 @@ export const AuthProvider = ({ children }) => {
       setIsLoadingPublicSettings(false);
       setIsLoadingAuth(false);
       setAuthChecked(true);
-    }, 10000);
+    }, 5000);
 
     // Initialize token session management (idle timeout, concurrency monitoring)
     const cleanupTokenManager = initTokenManager();
@@ -219,34 +219,61 @@ export const AuthProvider = ({ children }) => {
             return;
           }
 
+          if (resolvedCompanyId && (roles.length === 0 || permissions.length === 0)) {
+            // Fetch directly from Firestore on first login / empty IndexedDB to prevent race conditions
+            try {
+              const [rolesSnap, permsSnap, sfaSnap] = await Promise.all([
+                getDocs(collection(db, `companies/${resolvedCompanyId}/roles`)),
+                getDocs(collection(db, `companies/${resolvedCompanyId}/permissions`)),
+                getDocs(collection(db, `companies/${resolvedCompanyId}/sensitiveFieldAccess`))
+              ]);
+              roles = rolesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+              permissions = permsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+              sensitiveFieldAccess = sfaSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+              // Seed local Dexie cache so subsequent checks are fast
+              await Promise.all([
+                ...roles.map(r => base44.entities.Role.create(r).catch(() => {})),
+                ...permissions.map(p => base44.entities.Permission.create(p).catch(() => {})),
+                ...sensitiveFieldAccess.map(s => base44.entities.SensitiveFieldAccess.create(s).catch(() => {}))
+              ]);
+            } catch (fsErr) {
+              console.error("Failed to fetch RBAC from Firestore:", fsErr);
+            }
+          }
+
           let userRecord = usersList.find(u => u.id === firebaseUser.uid);
+          
+          if (!userRecord && resolvedCompanyId) {
+            // Secure data isolation: fetch the exact user record directly from Firestore on cache miss
+            try {
+              const userDocSnap = await getDoc(doc(db, `companies/${resolvedCompanyId}/users`, firebaseUser.uid));
+              if (userDocSnap.exists()) {
+                userRecord = userDocSnap.data();
+                // Cache user record locally in Dexie database
+                await base44.entities.User.create(userRecord).catch(console.error);
+              }
+            } catch (fsErr) {
+              console.error("Failed to fetch user doc from Firestore:", fsErr);
+            }
+          }
+
           if (userRecord) {
             localStorage.setItem('branch_id', userRecord.branch_id || 'main');
-          }
-          
-          if (!userRecord) {
-            // First registered user is the owner, others are cashiers
-            const isFirstUser = usersList.length === 0;
-            const defaultRole = isFirstUser ? "role-owner" : "role-cashier";
-            const defaultSalary = isFirstUser ? 150000 : 18000;
-            
-            userRecord = {
-              id: firebaseUser.uid,
-              name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
-              email: firebaseUser.email,
-              role_id: defaultRole,
-              branch_id: null,
-              is_active: true,
-              assigned_by: null,
-              assigned_at: new Date().toISOString(),
-              salary: defaultSalary
-            };
-            
-            try {
-              await base44.entities.User.create(userRecord);
-            } catch (e) {
-              console.error("Error creating user record:", e);
-            }
+          } else {
+            // If the user record still does not exist, they are not registered in the system.
+            // Throw user_not_registered error instead of auto-creating a default/escalated owner record.
+            setAuthError({ type: 'user_not_registered', message: 'Your account is not registered. Please contact your administrator.' });
+            setUser(null);
+            setIsAuthenticated(false);
+            localStorage.removeItem('base44_access_token');
+            localStorage.removeItem('base44_cached_user');
+            localStorage.removeItem(`rbac_profile_${firebaseUser.uid}`);
+            await auth.signOut();
+            setIsLoadingPublicSettings(false);
+            setIsLoadingAuth(false);
+            setAuthChecked(true);
+            return;
           }
           
           // Check if active status is false
@@ -445,6 +472,12 @@ export const AuthProvider = ({ children }) => {
                   base44.entities.Permission.list(),
                   base44.entities.SensitiveFieldAccess.list()
                 ]);
+
+                if (freshRoles.length === 0 || freshPerms.length === 0) {
+                  // Secure RBAC: do not perform background update if lists are empty (sync in progress)
+                  // to prevent downgrading the user's role/permissions due to empty cache.
+                  return;
+                }
 
                 const fUserRecord = freshUsers.find(u => u.id === firebaseUser.uid);
                 if (!fUserRecord) return;
@@ -704,10 +737,17 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
         setIsAuthenticated(false);
         setCompanyId(null);
+        const hadAccessToken = !!localStorage.getItem('base44_access_token');
+        const hadCachedUser = !!localStorage.getItem('base44_cached_user');
+        const hadCompanyId = !!localStorage.getItem('company_id');
+
         localStorage.removeItem('base44_access_token');
         localStorage.removeItem('base44_cached_user');
         localStorage.removeItem('company_id');
-        clearAllLocalData().catch(console.error);
+
+        if (hadAccessToken || hadCachedUser || hadCompanyId) {
+          clearAllLocalData().catch(console.error);
+        }
       }
       
       setIsLoadingPublicSettings(false);

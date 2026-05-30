@@ -421,8 +421,22 @@ export const manageStaffUser = async (data) => {
       const secondaryAuth = getAuth(secondaryApp);
 
       try {
-        const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email.trim().toLowerCase(), password);
-        const newStaffUser = userCredential.user;
+        let newStaffUser;
+        try {
+          const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email.trim().toLowerCase(), password);
+          newStaffUser = userCredential.user;
+        } catch (createErr) {
+          if (createErr.code === "auth/email-already-in-use") {
+            try {
+              const userCredential = await signInWithEmailAndPassword(secondaryAuth, email.trim().toLowerCase(), password);
+              newStaffUser = userCredential.user;
+            } catch (signErr) {
+              throw createErr;
+            }
+          } else {
+            throw createErr;
+          }
+        }
 
         // Write user details to tenant's user collection
         const userDocRef = doc(db, "companies", companyId, "users", newStaffUser.uid);
@@ -441,7 +455,9 @@ export const manageStaffUser = async (data) => {
           user_code: userCode.trim().toUpperCase(),
           salary: salary ? Number(salary) : 0,
           assigned_by: auth.currentUser?.uid || null,
-          assigned_at: new Date().toISOString()
+          assigned_at: new Date().toISOString(),
+          companyId: companyId,
+          updated_date: new Date().toISOString()
         });
 
         // Log action to Tenant Audit Log subcollection
@@ -454,7 +470,8 @@ export const manageStaffUser = async (data) => {
           branchId: branchId || "MAIN",
           description: `Staff user ${userCode} (${name}) created (Client Fallback).`,
           timestamp: serverTimestamp(),
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
+          companyId: companyId
         });
 
         await batch.commit();
@@ -498,6 +515,8 @@ export const manageStaffUser = async (data) => {
         updates.profile_password = encryptPassword(data.password);
       }
 
+      updates.updated_date = new Date().toISOString();
+
       await updateDoc(userRef, updates);
 
       // Log action to Tenant Audit Log
@@ -511,7 +530,8 @@ export const manageStaffUser = async (data) => {
         branchId: targetData.branch_id || "MAIN",
         description: `Staff user ${targetData.user_code} updated (Client Fallback).`,
         timestamp: serverTimestamp(),
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        companyId: companyId
       });
       await batch.commit();
 
@@ -524,11 +544,16 @@ export const manageStaffUser = async (data) => {
 
       const userRef = doc(db, "companies", companyId, "users", uid);
       const userSnap = await getDoc(userRef);
-      if (!userSnap.exists()) {
-        throw new Error("Target user profile not found.");
+      
+      let branchId = "MAIN";
+      let userCode = "UNKNOWN";
+
+      if (userSnap.exists()) {
+        const targetData = userSnap.data();
+        branchId = targetData.branch_id || "MAIN";
+        userCode = targetData.user_code || "UNKNOWN";
       }
 
-      const targetData = userSnap.data();
       await deleteDoc(userRef);
 
       // Log action to Tenant Audit Log
@@ -539,10 +564,11 @@ export const manageStaffUser = async (data) => {
         userId: auth.currentUser?.uid || null,
         entityType: "User",
         entityId: uid,
-        branchId: targetData.branch_id || "MAIN",
-        description: `Staff user ${targetData.user_code} deleted (Client Fallback).`,
+        branchId: branchId,
+        description: `Staff user ${userCode} deleted (Client Fallback).`,
         timestamp: serverTimestamp(),
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        companyId: companyId
       });
       await batch.commit();
 

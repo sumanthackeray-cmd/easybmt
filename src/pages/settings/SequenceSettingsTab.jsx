@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { getAllBranches } from '@/api/branchService';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -6,6 +7,20 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 
 export default function SequenceSettingsTab({ form, set }) {
+  const [branches, setBranches] = useState([]);
+  const [selectedBranch, setSelectedBranch] = useState("main");
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const data = await getAllBranches();
+        setBranches(data || []);
+      } catch (err) {
+        console.error("Failed to load branches", err);
+      }
+    };
+    load();
+  }, []);
 
   const documentTypes = [
     { id: 'gst', label: 'GST Invoice', defaultFormat: 'GST-SEQ' },
@@ -25,24 +40,41 @@ export default function SequenceSettingsTab({ form, set }) {
   };
 
   const handleResetAll = () => {
-    if (window.confirm("Are you sure you want to reset all document sequences to zero?")) {
+    if (window.confirm(`Are you sure you want to reset all document sequences to zero for ${selectedBranch === 'main' ? 'Headquarters' : 'this branch'}?`)) {
       documentTypes.forEach(doc => {
-        set(`${doc.id}_seq`, "0");
+        const prefix = selectedBranch === "main" ? "" : `${selectedBranch}_`;
+        set(`${prefix}${doc.id}_seq`, "0");
       });
     }
   };
 
   return (
     <div className="bg-card border border-border rounded-xl p-5 space-y-6">
-      <div className="flex items-center justify-between border-b border-border pb-3">
+      <div className="flex items-center justify-between border-b border-border pb-3 mb-6">
         <h3 className="font-bold text-lg text-blue-600">Document Sequences</h3>
+        
+        <div className="flex items-center gap-2">
+          <Label className="text-xs text-muted-foreground whitespace-nowrap">Configure for:</Label>
+          <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+            <SelectTrigger className="w-[220px] h-9 text-sm font-semibold bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400">
+              <SelectValue placeholder="Select context" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="main" className="font-bold">🏢 Headquarters (Global)</SelectItem>
+              {branches.map(b => (
+                <SelectItem key={b.id} value={b.id}>📍 {b.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {documentTypes.map(doc => {
-          const seqKey = `${doc.id}_seq`;
-          const formatKey = `${doc.id}_format`;
-          const monthlyKey = `${doc.id}_monthly`;
+          const prefix = selectedBranch === "main" ? "" : `${selectedBranch}_`;
+          const seqKey = `${prefix}${doc.id}_seq`;
+          const formatKey = `${prefix}${doc.id}_format`;
+          const monthlyKey = `${prefix}${doc.id}_monthly`;
 
           return (
             <div key={doc.id} className="border border-slate-200 dark:border-slate-800 rounded-lg p-4 bg-slate-50/50 dark:bg-slate-900/50">

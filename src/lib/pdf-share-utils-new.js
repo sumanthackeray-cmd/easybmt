@@ -16,7 +16,7 @@ const getCORSImageUrl = (url) => {
 
 // Helper: get initials for shop avatar fallback
 const getInitials = (name) => {
-  if (!name || name === "Vogats") return "GS";
+  if (!name) return "GS";
   const words = name.trim().split(/\s+/);
   if (words.length >= 2) {
     return (words[0][0] + words[1][0]).toUpperCase();
@@ -47,7 +47,7 @@ export function generateThermalHTML(inv = {}, shop = {}, printerSize = "58mm") {
   const is80mm = printerSize === "80mm";
   const WC = is80mm ? "w80" : "w58";
 
-  const shopName = (!shop.shop_name || shop.shop_name === "Vogats") ? "EASYBMT SHOP" : shop.shop_name;
+  const shopName = !shop.shop_name ? "EASYBMT SHOP" : shop.shop_name;
   const shopInitials = getInitials(shopName);
 
   const subtotal = inv.subtotal || 0;
