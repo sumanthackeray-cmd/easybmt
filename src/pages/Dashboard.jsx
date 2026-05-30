@@ -43,7 +43,7 @@ export default function DashboardRouter() {
       onRefresh={refetchAll}
       isRefreshing={dashboardData.isLoading}
     >
-      <SEO title="Dashboard - EasyBMT" description="Overview of your business metrics, sales, and analytics." />
+      <SEO title="Dashboard - EasyBMT" description="Overview of your business metrics, sales, and analytics." noindex={true} />
       <div className="space-y-6">
         <ProfileCompletionBanner />
         <Suspense fallback={<div className="p-8 text-center text-muted-foreground animate-pulse font-semibold">Loading Smart Dashboard Experience...</div>}>

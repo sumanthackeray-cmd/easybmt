@@ -252,8 +252,9 @@ export default function Landing() {
   return (
     <div className="landing-page">
       <SEO 
-        title="EasyBMT — GST Billing, POS & Business Management Software" 
-        description="India's smart business management platform. Generate GST invoices, manage inventory, execute point-of-sale, run ERP bookkeeping, and get predictive AI analytics. Built for Bharat." 
+        title="EasyBMT — GST Billing, Dual-POS & Business Management Software" 
+        description="India's leading business management software for modern counters. Generate GST invoices, print barcode labels, track inventory, execute fast POS billing, handle double-entry accounting ledgers, and view real-time Profit & Loss reports. Perfect for retail shops, supermarkets, fashion hubs, and distributors." 
+        withSchema={true}
       />
 
       {/* NAV */}

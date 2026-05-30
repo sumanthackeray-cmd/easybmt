@@ -410,7 +410,10 @@ export default function Register() {
       </div>
 
       <div className="flex-1 flex w-full pt-[calc(45px+env(safe-area-inset-top,0px))] min-h-0 overflow-hidden">
-        <SEO title="Register - EasyBMT" description="Create a new EasyBMT account. Start your journey with smart GST billing and ERP management." />
+        <SEO 
+          title="Sign Up for EasyBMT — Start 14-Day Free Billing Trial" 
+          description="Create your company account in under 5 minutes. Auto-populate business details via GSTIN database lookup, add products with HSN tax slabs, and start printing barcode sheets and invoices instantly." 
+        />
         {/* LEFT PANEL - Branding (Hidden on mobile) */}
         <div className="hidden lg:flex lg:w-[45%] flex-col justify-between pt-8 pb-10 px-12 relative overflow-hidden bg-[#F5F5F7] dark:bg-[#111118] border-r border-[#E8E8EE] dark:border-none transition-colors duration-300">
           <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#E8721C]/10 rounded-full blur-[120px] mix-blend-screen pointer-events-none translate-x-1/2 -translate-y-1/4"></div>

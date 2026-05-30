@@ -83,7 +83,10 @@ export default function Pricing() {
 
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary selection:text-white pb-16">
-      <SEO title="Pricing - EasyBMT" description="Simple, transparent pricing for all business sizes. Start your 14-day free trial today." />
+      <SEO 
+        title="EasyBMT Pricing Plans — Cost-Effective GST Billing & ERP Software" 
+        description="Explore flexible premium plans starting at flat rates. Start your 14-day free trial on dual-mode POS billing, multi-user inventory racks, automated Profit & Loss bookkeeping, and one-click GSTR returns. Zero hidden charges." 
+      />
       
       {/* Navigation Header */}
       <nav className="flex items-center justify-between py-4 px-6 md:px-12 border-b border-border bg-card">

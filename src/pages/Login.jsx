@@ -258,7 +258,11 @@ export default function Login() {
       </div>
 
       <div className="flex-1 flex w-full pt-[calc(45px+env(safe-area-inset-top,0px))] min-h-0 overflow-hidden">
-        <SEO title="Login - EasyBMT" description="Securely login to your EasyBMT enterprise management and billing dashboard." withSchema={true} />
+        <SEO 
+          title="Login to EasyBMT Portal — Secure Billing & ERP Dashboard" 
+          description="Access your secure EasyBMT enterprise account. Generate invoices, track raw materials BOM, check daily profit margins, and manage employees and attendance logs from your private desk." 
+          withSchema={true} 
+        />
       {/* LEFT PANEL - Branding (Hidden on mobile) */}
       <div className="hidden lg:flex lg:w-[45%] flex-col justify-between pt-8 pb-10 px-12 relative overflow-hidden bg-[#F5F5F7] dark:bg-[#111118] border-r border-[#E8E8EE] dark:border-none transition-colors duration-300">
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#E8721C]/10 rounded-full blur-[120px] mix-blend-screen pointer-events-none translate-x-1/2 -translate-y-1/4"></div>
