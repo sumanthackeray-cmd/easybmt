@@ -500,7 +500,7 @@ export default function Register() {
             
             <div className="mb-5">
               <h2 className="text-2xl sm:text-3xl font-black text-[#111118] dark:text-white tracking-tight mb-1.5 transition-colors duration-300">Register Business</h2>
-              <p className="text-sm sm:text-[15px] text-[#7A7A8C] dark:text-[#8A8A9E] font-medium transition-colors duration-300">Start your 14-day free trial. No credit card required.</p>
+              <p className="text-sm sm:text-[15px] text-[#7A7A8C] dark:text-[#8A8A9E] font-medium transition-colors duration-300">Start your 14-day free trial. No credit card required. 3 month free</p>
             </div>
 
           {(error || tenantError) && (
