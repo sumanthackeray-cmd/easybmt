@@ -26,8 +26,8 @@ export function ThemeSync() {
       // Style.Light means dark text (for light backgrounds)
       StatusBar.setStyle({ style: isDark ? Style.Dark : Style.Light }).catch(() => {});
       
-      // Set to transparent so the MobileNav (which is overlaid) shows through with its blur effect
-      StatusBar.setBackgroundColor({ color: '#00000000' }).catch(() => {});
+      // Set to match theme background dynamically instead of transparent overlay
+      StatusBar.setBackgroundColor({ color: backgroundColor }).catch(() => {});
     } catch (e) {
       // Ignore if not running in Capacitor
     }

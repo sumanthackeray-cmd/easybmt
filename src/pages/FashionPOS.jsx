@@ -9,7 +9,7 @@ import {
   Printer, Sparkles, Edit3, Edit,
   Shirt, Package, Check, Scan, X, FileText, RefreshCw, Clock,
   Scissors, ShoppingBag,
-  ArrowLeft, Sun, Moon, History
+  ArrowLeft, Sun, Moon, History, Bluetooth
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -580,42 +580,24 @@ export default function FashionPOS() {
       printer_size: printSize
     };
     
-    if (runSettings.printer_type === "browser" || !runSettings.printer_type) {
-      setTimeout(() => {
-        window.print();
-      }, 300);
-      return;
-    }
-    
-    setPrintingStatus("Connecting...");
+    setPrintingStatus("Preparing print...");
     try {
-      const payload = generateEscPosPayload(invoice, runSettings, isCopy);
-      const success = await sendEscPosToPrinter(payload, runSettings, (status) => {
-        setPrintingStatus(status);
+      const { printReceipt } = await import("@/lib/pos-print-service");
+      const result = await printReceipt(invoice, runSettings, {
+        isDuplicate: isCopy,
+        onStatus: setPrintingStatus,
+        preferNative: true,
+        allowFallback: true,
       });
-      
-      if (success) {
+      if (result && result.success) {
         toast.success("Receipt printed successfully!");
-        setPrintingStatus("");
-      } else {
-        toast.error("Failed to print. Job added to offline queue.");
-        addToOfflinePrintQueue(invoice, runSettings);
-        setOfflineQueueCount(getOfflinePrintQueue().length);
-        setPrintingStatus("");
       }
     } catch (err) {
-      console.error(err);
-      if (err.message && err.message.includes("No COM port selected")) {
-        // Silent fallback to browser print if hardware printer is not configured
-        toast.info("Hardware printer not configured. Falling back to browser print.");
-        setTimeout(() => { window.print(); }, 300);
-        setPrintingStatus("");
-        return;
-      }
-      toast.error(`Printing error: ${err.message}. Added to offline queue.`);
-      addToOfflinePrintQueue(invoice, runSettings);
-      setOfflineQueueCount(getOfflinePrintQueue().length);
+      console.error("Printing failed:", err);
+      toast.error(`Printing error: ${err.message || err}`);
+    } finally {
       setPrintingStatus("");
+      setOfflineQueueCount(getOfflinePrintQueue().length);
     }
   };
 

@@ -101,12 +101,7 @@ function waitForImages(root, timeoutMs = 8000) {
 }
 
 function buildThermalPrintDocument(htmlBody, printerSize) {
-  // Allow <style> tag and keep full document structure to preserve receipt styles.
-  const safe = DOMPurify.sanitize(htmlBody, {
-    ADD_TAGS: ["style"],
-    FORCE_BODY: false,
-  });
-  return safe;
+  return htmlBody;
 }
 
 /**
@@ -236,9 +231,26 @@ export async function printReceipt(invoice, shopSettings = {}, options = {}) {
     return { success: true, method: "thermal_fallback", fallbackReason: "unsupported_native" };
   }
 
+  // Graphical PDF printing path for RawBT (Android)
+  if (printerType === "rawbt") {
+    if (onStatus) onStatus("Generating high-fidelity receipt PDF...");
+    try {
+      const { renderInvoiceToPDFBlob } = await import("@/lib/pdf-share-utils");
+      const doc = await renderInvoiceToPDFBlob(invoice, settings, false, "invoice");
+      const pdfBase64 = doc.output("datauristring").split(",")[1];
+      if (onStatus) onStatus("Sending graphic receipt to RawBT...");
+      const intentUrl = `intent:data:application/pdf;base64,${pdfBase64}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end`;
+      window.location.href = intentUrl;
+      return { success: true, method: "rawbt_pdf" };
+    } catch (pdfErr) {
+      console.warn("RawBT PDF generation failed, falling back to text ESC/POS:", pdfErr);
+    }
+  }
+
   try {
-    if (onStatus) onStatus("Sending to printer...");
+    if (onStatus) onStatus("Compiling print commands...");
     const payload = generateEscPosPayload(invoice, settings, isDuplicate);
+    if (onStatus) onStatus("Sending print job to printer...");
     const ok = await sendEscPosToPrinter(payload, settings, onStatus);
     if (ok) return { success: true, method: printerType };
     throw new Error("Printer did not accept the job");

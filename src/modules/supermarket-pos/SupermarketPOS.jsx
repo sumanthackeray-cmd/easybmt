@@ -18,7 +18,7 @@ import {
   Scan, Search, ShoppingCart, UserPlus, CreditCard, Sparkles, AlertTriangle, 
   Printer, ArrowLeft, RotateCcw, Keyboard, Scale, Trash2, Eye, ShieldAlert,
   Plus, Minus, RefreshCw, FileText, CheckCircle2, Award, Zap, Power, ShoppingBag,
-  X, Store, Package, User, History
+  X, Store, Package, User, History, Bluetooth
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "@/lib/toast";
@@ -1324,7 +1324,11 @@ function Terminal({ activeSession, products, activeOffers, loyaltyCards, custome
           activeMobileTab === "cart" ? "flex" : "hidden md:flex"
         )}>
           {/* General Customer Selection */}
-          <div className="flex flex-col gap-1.5 p-2 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800">
+          <div className="flex flex-col gap-1.5 p-2 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 relative">
+            <div className="absolute top-2 right-2 flex items-center gap-1">
+              <span className="text-[8px] text-slate-400 font-black tracking-widest uppercase">BT:</span>
+              <Bluetooth className={cn("w-1.5 h-1.5", shopSettings.paired_printer_name ? "text-emerald-500 fill-emerald-500" : "text-rose-500 fill-rose-500")} style={{ width: '6px', height: '6px' }} />
+            </div>
             <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
               <User className="w-3.5 h-3.5 text-amber-500" /> Customer Account
             </label>
@@ -2053,6 +2057,23 @@ function Terminal({ activeSession, products, activeOffers, loyaltyCards, custome
               <X className="w-4 h-4" />
             </button>
           </div>
+
+          {/*  Connection / Print Status Indicator  always visible  */}
+          {shopSettings?.printer_type && shopSettings?.printer_type !== "browser" && (
+            <div className="bg-slate-50 border border-slate-200 p-2 mx-4 rounded-xl text-[10px] text-slate-700 space-y-1 mb-2 print:hidden shrink-0">
+              <div className="flex justify-between items-center">
+                <span className="font-bold flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+                  Active Printer:
+                </span>
+                <span className="font-mono bg-slate-200 px-1.5 py-0.5 rounded font-black text-slate-800 flex items-center gap-1">
+                  <Bluetooth className={cn("w-3.5 h-3.5", shopSettings.paired_printer_name ? "text-emerald-500 fill-emerald-500" : "text-rose-500 fill-rose-500")} style={{ width: '6px', height: '6px' }} />
+                  {shopSettings.paired_printer_name || shopSettings.printer_ip || "Handheld POS"}
+                </span>
+              </div>
+            </div>
+          )}
+
           {/*  Scrollable receipt content  */}
           <div className={`flex-1 overflow-y-auto min-h-0 px-4 py-3 bg-[#1a1a2e] thermal-receipt-print-area ${selectedPrintSize === "80mm" ? "printer-80mm" : "printer-58mm"} print:bg-transparent print:p-0 print:overflow-visible print:block`}>
              {lastInvoice && (

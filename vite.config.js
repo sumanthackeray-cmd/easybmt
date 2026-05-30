@@ -7,7 +7,7 @@ import { fileURLToPath, URL } from 'node:url'
 
 // https://vite.dev/config/
 export default defineConfig({
-    base: './',
+    base: '/',
     logLevel: 'error',
     resolve: {
         alias: {
@@ -78,13 +78,13 @@ export default defineConfig({
                 ]
             }
         }),
-        ViteImageOptimizer({
+        /* ViteImageOptimizer({
             png: { quality: 80 },
             jpeg: { quality: 80 },
             jpg: { quality: 80 },
             webp: { lossless: true },
             avif: { lossless: true },
-        }),
+        }), */
     ],
     server: {
         port: 5174,

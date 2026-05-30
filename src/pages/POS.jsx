@@ -15,11 +15,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { collection, query, onSnapshot } from "firebase/firestore";
 import { db } from "@/api/firebase";
 import { 
-  Zap, Search, ShoppingCart, User, Plus, Minus, Trash2, 
+  Zap, Download, Search, ShoppingCart, User, Plus, Minus, Trash2, 
   Printer, ArrowLeft, RotateCcw, AlertTriangle, Edit,
   Utensils, Pill, Shirt, Store, Package, Check, Scan, Scale,
   History, Mic, MicOff, X, FileText, RefreshCw, Camera,
-  TrendingUp, Calendar, Clock, IndianRupee, BarChart2, Power, Filter
+  TrendingUp, Calendar, Clock, IndianRupee, BarChart2, Power, Filter,
+  Bluetooth
 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { Link } from "react-router-dom";
@@ -760,42 +761,24 @@ function POSContent() {
       printer_size: printSize
     };
     
-    if (runSettings.printer_type === "browser" || !runSettings.printer_type) {
-      setTimeout(() => {
-        window.print();
-      }, 300);
-      return;
-    }
-    
-    setPrintingStatus("Connecting...");
+    setPrintingStatus("Preparing print...");
     try {
-      const payload = generateEscPosPayload(invoice, runSettings, isCopy);
-      const success = await sendEscPosToPrinter(payload, runSettings, (status) => {
-        setPrintingStatus(status);
+      const { printReceipt } = await import("@/lib/pos-print-service");
+      const result = await printReceipt(invoice, runSettings, {
+        isDuplicate: isCopy,
+        onStatus: setPrintingStatus,
+        preferNative: true,
+        allowFallback: true,
       });
-      
-      if (success) {
+      if (result && result.success) {
         toast.success("Receipt printed successfully!");
-        setPrintingStatus("");
-      } else {
-        toast.error("Failed to print. Job added to offline queue.");
-        addToOfflinePrintQueue(invoice, runSettings);
-        setOfflineQueueCount(getOfflinePrintQueue().length);
-        setPrintingStatus("");
       }
     } catch (err) {
-      console.error(err);
-      if (err.message && err.message.includes("No COM port selected")) {
-        // Silent fallback to browser print if hardware printer is not configured
-        toast.info("Hardware printer not configured. Falling back to browser print.");
-        setTimeout(() => { window.print(); }, 300);
-        setPrintingStatus("");
-        return;
-      }
-      toast.error(`Printing error: ${err.message}. Added to offline queue.`);
-      addToOfflinePrintQueue(invoice, runSettings);
-      setOfflineQueueCount(getOfflinePrintQueue().length);
+      console.error("Printing failed:", err);
+      toast.error(`Printing error: ${err.message || err}`);
+    } finally {
       setPrintingStatus("");
+      setOfflineQueueCount(getOfflinePrintQueue().length);
     }
   };
 
@@ -1896,19 +1879,28 @@ function POSContent() {
 
       // Restore stock for each item (BOTH: branch inventory + global product stock)
       for (const item of (invoice.items || [])) {
-        const prod = products.find(p => p.id === item.product_id);
-        if (prod) {
-          // 1) Global catalog stock restore
-          await base44.entities.Product.update(item.product_id, { stock: (prod.stock || 0) + item.qty });
+        if (!item.product_id) continue;
+        try {
+          const prod = await base44.entities.Product.get(item.product_id);
+          if (prod) {
+            // 1) Global catalog stock restore
+            const currentStock = Number(prod.stock || 0);
+            const qtyToRestore = Number(item.qty || 1);
+            await base44.entities.Product.update(item.product_id, { stock: currentStock + qtyToRestore });
 
-          // 2) Branch inventory restore (Phase 1 requirement)
-          if (targetBranchId) {
-            try {
-              await updateInventory(item.product_id, targetBranchId, +item.qty, 'pos_return');
-            } catch (e) {
-              console.error("Return: failed to restore branch inventory (best-effort).", e);
+            // 2) Branch inventory restore (Phase 1 requirement)
+            if (targetBranchId) {
+              try {
+                await updateInventory(item.product_id, targetBranchId, qtyToRestore, 'pos_return');
+              } catch (e) {
+                console.error("Return: failed to restore branch inventory (best-effort).", e);
+              }
             }
+          } else {
+            console.warn(`Product not found in DB during return: ${item.product_id}`);
           }
+        } catch (e) {
+          console.error(`Failed to restore stock for product ${item.product_id} during return:`, e);
         }
       }
 
@@ -2400,19 +2392,19 @@ function POSContent() {
                           </div>
                         )}
                         
-                        {/* Premium Stock Dot Pill */}
-                        <div className="absolute bottom-2 left-2 z-10">
-                          <span className={cn(
-                            "text-[8px] font-extrabold tracking-wide uppercase px-2 py-0.5 rounded-full backdrop-blur-md shadow-sm flex items-center gap-1 border",
+                        {/* Premium Stock Badge - high contrast, clearly visible */}
+                        <div className="absolute bottom-0 left-0 right-0 z-10">
+                          <div className={cn(
+                            "w-full flex items-center justify-center gap-1 py-1 text-[9px] font-black tracking-wide uppercase",
                             isOutOfStock 
-                              ? "bg-red-500/10 text-red-500 border-red-500/20" 
+                              ? "bg-red-600 text-white" 
                               : isLowStock 
-                                ? "bg-amber-500/10 text-amber-500 border-amber-500/20" 
-                                : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                                ? "bg-amber-500 text-slate-950" 
+                                : "bg-emerald-600 text-white"
                           )}>
-                            <span className={cn("w-1 h-1 rounded-full", isOutOfStock ? "bg-red-500 animate-pulse" : isLowStock ? "bg-amber-500 animate-pulse" : "bg-emerald-500")} />
-                            {p.stock || 0} {isOutOfStock ? "Out" : "Stock"}
-                          </span>
+                            <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", isOutOfStock ? "bg-white/80 animate-pulse" : isLowStock ? "bg-slate-900/60 animate-pulse" : "bg-white/80")} />
+                            <span>{p.stock || 0} {isOutOfStock ? "Out of Stock" : "In Stock"}</span>
+                          </div>
                         </div>
                       </div>
 
@@ -2469,7 +2461,11 @@ function POSContent() {
         <div className={`w-full md:w-[350px] lg:w-[380px] bg-white dark:bg-slate-950/80 backdrop-blur-md border-l border-slate-200 dark:border-slate-800/80 flex flex-col overflow-hidden shrink-0 h-full pb-[36px] md:pb-0 shadow-[-4px_0_20px_rgba(0,0,0,0.04)] dark:shadow-none ${mobileTab !== 'cart' && 'hidden md:flex'}`}>
           
           {/* Active Cart Customer Selection */}
-          <div className="p-2 border-b border-slate-200 dark:border-slate-800/80 space-y-2 bg-slate-50 dark:bg-slate-900/20 shrink-0">
+          <div className="p-2 border-b border-slate-200 dark:border-slate-800/80 space-y-2 bg-slate-50 dark:bg-slate-900/20 shrink-0 relative">
+            <div className="absolute top-2 right-2 flex items-center gap-1">
+              <span className="text-[8px] text-slate-400 font-black tracking-widest uppercase">BT:</span>
+              <Bluetooth className={cn("w-1.5 h-1.5", shopSettings.paired_printer_name ? "text-emerald-500 fill-emerald-500" : "text-rose-500 fill-rose-500")} style={{ width: '6px', height: '6px' }} />
+            </div>
             <div className="flex items-center justify-between">
               <label className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                 <User className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" /> Customer Account
@@ -3229,7 +3225,8 @@ function POSContent() {
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
                     Active Printer:
                   </span>
-                  <span className="font-mono bg-slate-200 px-1.5 py-0.5 rounded font-black text-slate-800">
+                  <span className="font-mono bg-slate-200 px-1.5 py-0.5 rounded font-black text-slate-800 flex items-center gap-1">
+                    <Bluetooth className={cn("w-3.5 h-3.5", shopSettings.paired_printer_name ? "text-emerald-500 fill-emerald-500" : "text-rose-500 fill-rose-500")} style={{ width: '6px', height: '6px' }} />
                     {shopSettings.paired_printer_name || shopSettings.printer_ip || "Handheld POS"}
                   </span>
                 </div>
@@ -4161,38 +4158,62 @@ function POSContent() {
               </div>
             ) : (
               filteredInvoices.map(inv => (
-                <button
+                <div
                   key={inv.id}
-                  type="button"
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setSelectedHistoryInvoice(inv)}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setSelectedHistoryInvoice(inv); }}
                   className={cn(
-                    "w-full px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-900/60 transition-colors",
+                    "w-full px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-900/60 transition-colors cursor-pointer flex items-center justify-between gap-3",
                     selectedHistoryInvoice?.id === inv.id && "bg-amber-50 dark:bg-amber-900/10 border-l-2 border-amber-500"
                   )}
                 >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-black text-slate-800 dark:text-slate-200">{inv.invoice_number}</p>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{inv.customer_name === "Walk-in Customer" ? t("pos.walk_in_customer") : inv.customer_name}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs font-black text-amber-600 dark:text-amber-400 font-mono">{(inv.grand_total || 0).toFixed(2)}</p>
-                      <div className="flex items-center gap-1 justify-end mt-0.5">
-                        <Badge className={cn(
-                          "text-[8px] px-1.5 py-0 h-4 font-bold uppercase",
-                          inv.status === "returned" ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400" :
-                          "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-                        )}>
-                          {inv.status === "returned" ? (t("pos.return_sale") || "Returned") : (t("pos.paid") || "Paid")}
-                        </Badge>
-                        <span className="text-[9px] text-slate-400 capitalize">{inv.payment_method || "cash"}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-black text-slate-800 dark:text-slate-200">{inv.invoice_number}</p>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">{inv.customer_name === "Walk-in Customer" ? t("pos.walk_in_customer") : inv.customer_name}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs font-black text-amber-600 dark:text-amber-400 font-mono">{(inv.grand_total || 0).toFixed(2)}</p>
+                        <div className="flex items-center gap-1 justify-end mt-0.5">
+                          <Badge className={cn(
+                            "text-[8px] px-1.5 py-0 h-4 font-bold uppercase",
+                            inv.status === "returned" ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400" :
+                            "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                          )}>
+                            {inv.status === "returned" ? (t("pos.return_sale") || "Returned") : (t("pos.paid") || "Paid")}
+                          </Badge>
+                          <span className="text-[9px] text-slate-400 capitalize">{inv.payment_method || "cash"}</span>
+                        </div>
                       </div>
                     </div>
+                    <p className="text-[9px] text-slate-400 mt-1 flex items-center gap-1">
+                      <Calendar className="w-2.5 h-2.5" />{inv.date} · {inv.items?.length || 0} {t("invoices.items") || "items"}
+                    </p>
                   </div>
-                  <p className="text-[9px] text-slate-400 mt-1 flex items-center gap-1">
-                    <Calendar className="w-2.5 h-2.5" />{inv.date} · {inv.items?.length || 0} {t("invoices.items") || "items"}
-                  </p>
-                </button>
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      try {
+                        toast.loading("Generating PDF...", { id: "pdf-download-hist" });
+                        await downloadInvoicePDF(inv, shopSettings);
+                        toast.success("PDF downloaded!", { id: "pdf-download-hist" });
+                      } catch (err) {
+                        toast.error("PDF generation failed: " + err.message, { id: "pdf-download-hist" });
+                      }
+                    }}
+                    className="h-8 w-8 rounded-xl text-slate-500 hover:text-amber-500 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0 border border-slate-200/40 dark:border-slate-800"
+                    title="Download Invoice PDF"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
               ))
             )}
           </div>
@@ -4288,40 +4309,57 @@ function POSContent() {
                       type="button"
                       variant="outline"
                       onClick={() => { setLatestInvoice(selectedHistoryInvoice); triggerPrint(selectedHistoryInvoice, true); }}
-                      className="h-10 rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold gap-1.5 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      className="h-10 rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold gap-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 w-full"
                     >
                       <Printer className="w-3.5 h-3.5" /> {t("common.print") || "Reprint"}
                     </Button>
-                    {selectedHistoryInvoice.status !== "returned" && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={async () => {
+                        try {
+                          toast.loading("Generating PDF...", { id: "pdf-download-detail" });
+                          await downloadInvoicePDF(selectedHistoryInvoice, shopSettings);
+                          toast.success("PDF downloaded!", { id: "pdf-download-detail" });
+                        } catch (err) {
+                          toast.error("PDF generation failed: " + err.message, { id: "pdf-download-detail" });
+                        }
+                      }}
+                      className="h-10 rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold gap-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 w-full"
+                    >
+                      <Download className="w-3.5 h-3.5" /> Download PDF
+                    </Button>
+                  </div>
+                  
+                  {selectedHistoryInvoice.status !== "returned" && (
+                    <>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button
+                          type="button"
+                          onClick={() => duplicateInvoiceToCart(selectedHistoryInvoice)}
+                          className="h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 text-xs font-bold gap-1.5 transition-all active:scale-95"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5" /> {t("common.duplicate") || "Duplicate"}
+                        </Button>
+                        <Button
+                          type="button"
+                          onClick={() => editInvoiceInCart(selectedHistoryInvoice)}
+                          className="h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 text-xs font-bold gap-1.5 transition-all active:scale-95"
+                        >
+                          <FileText className="w-3.5 h-3.5" /> {t("common.edit") || "Edit Bill"}
+                        </Button>
+                      </div>
+
                       <Button
                         type="button"
                         disabled={isProcessingReturn}
                         onClick={() => handleReturnInvoice(selectedHistoryInvoice)}
-                        className="h-10 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 text-xs font-bold gap-1.5 disabled:opacity-50"
+                        className="w-full h-10 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 text-xs font-bold gap-1.5 disabled:opacity-50"
                       >
                         {isProcessingReturn ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
                         {t("pos.return_sale") || "Return/Refund"}
                       </Button>
-                    )}
-                  </div>
-                  
-                  {selectedHistoryInvoice.status !== "returned" && (
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button
-                        type="button"
-                        onClick={() => duplicateInvoiceToCart(selectedHistoryInvoice)}
-                        className="h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 text-xs font-bold gap-1.5 transition-all active:scale-95"
-                      >
-                        <RefreshCw className="w-3.5 h-3.5" /> {t("common.duplicate") || "Duplicate"}
-                      </Button>
-                      <Button
-                        type="button"
-                        onClick={() => editInvoiceInCart(selectedHistoryInvoice)}
-                        className="h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 text-xs font-bold gap-1.5 transition-all active:scale-95"
-                      >
-                        <FileText className="w-3.5 h-3.5" /> {t("common.edit") || "Edit Bill"}
-                      </Button>
-                    </div>
+                    </>
                   )}
                 </div>
               </div>

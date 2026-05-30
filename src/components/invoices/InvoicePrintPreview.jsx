@@ -402,7 +402,28 @@ export default function InvoicePrintPreview({ open, onOpenChange, invoice, shopS
     ? generateThermalHTML(invoice, shopSettings, shopSettings.printer_size)
     : generateInvoiceHTML(invoice, shopSettings, docType, template);
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
+    // For B2C thermal receipts, use the unified POS print service to respect settings (RawBT, BLE, USB, COM, etc.)
+    if (isB2C && isThermal && !isGeneralInvoice && docType !== "packing_list" && docType !== "delivery_challan") {
+      try {
+        toast.loading("Sending to thermal printer...", { id: "pos-thermal-print" });
+        const { printReceipt } = await import("@/lib/pos-print-service");
+        const result = await printReceipt(invoice, shopSettings, {
+          isDuplicate: false,
+          preferNative: true,
+          allowFallback: true
+        });
+        if (result && result.success) {
+          toast.success("Receipt printed!", { id: "pos-thermal-print" });
+        }
+      } catch (err) {
+        console.error("POS printing failed from preview:", err);
+        toast.error("Failed to print: " + err.message, { id: "pos-thermal-print" });
+      }
+      return;
+    }
+
+    // Default standard A4 print path for B2B or general invoices
     const win = window.open("", "_blank");
     win.document.write(html);
     win.document.close();

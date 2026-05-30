@@ -114,7 +114,7 @@ export function generateThermalHTML(inv = {}, shop = {}, printerSize = "58mm") {
   if (upiId) {
     const upiUri = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(shopName)}&am=${grandTotal}&cu=INR`;
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(upiUri)}`;
-    const qrSize = is80mm ? '96px' : '72px';
+    const qrSize = '35mm';
     upiFooterHtml = `
     <div class="upi-label">Scan &amp; Pay via UPI</div>
     <img class="qr-img" src="${qrUrl}" crossorigin="anonymous" alt="UPI QR" style="width:${qrSize};height:${qrSize};">
@@ -172,25 +172,25 @@ export function generateThermalHTML(inv = {}, shop = {}, printerSize = "58mm") {
 /* Shell */
 .rcpt {
   background:#fff;
-  color:#111;
-  width:${is80mm ? '72mm' : '46mm'} !important;
-  max-width:${is80mm ? '72mm' : '46mm'} !important;
+  color:#000;
+  width:100% !important;
+  max-width:100% !important;
   margin:0 auto !important;
-  padding:0 !important;
+  padding:${is80mm ? '0 5mm' : '0 3mm'} !important;
   font-family:'Courier New',Courier,monospace;
   overflow:hidden !important;
   position:relative;
 }
-.w58 { font-size:8px; line-height:1.38; }
-.w80 { font-size:10px; line-height:1.4; }
+.w58 { font-size:19.2px; line-height:1.38; }
+.w80 { font-size:24px; line-height:1.4; }
 
 /* Top accent bar */
 .top-bar {
-  background:#111; color:#fff;
+  background:#000; color:#fff;
   text-align:center;
   padding:${is80mm ? '5px 4px' : '4px 4px'};
   letter-spacing:0.25em;
-  font-size:${is80mm ? '7.5px' : '6.5px'};
+  font-size:${is80mm ? '18px' : '15.6px'};
   font-weight:700;
   font-family:Arial,sans-serif;
   text-transform:uppercase;
@@ -200,45 +200,45 @@ export function generateThermalHTML(inv = {}, shop = {}, printerSize = "58mm") {
 .rcpt-head {
   text-align:center;
   padding:${is80mm ? '10px 6px 8px' : '7px 5px 6px'};
-  border-bottom:2px solid #111;
+  border-bottom:2px solid #000;
 }
 .logo-init {
-  width:${is80mm ? '44px' : '36px'};
-  height:${is80mm ? '44px' : '36px'};
+  width:${is80mm ? '52.8px' : '43.2px'};
+  height:${is80mm ? '52.8px' : '43.2px'};
   border-radius:50%;
-  background:#111; color:#fff;
+  background:#000; color:#fff;
   display:flex; align-items:center; justify-content:center;
   margin:0 auto ${is80mm ? '6px' : '5px'};
-  font-size:${is80mm ? '15px' : '12px'};
+  font-size:${is80mm ? '53.9px' : '43.2px'};
   font-weight:900;
   font-family:Arial Black,sans-serif;
   letter-spacing:-0.5px;
 }
 .logo-img {
-  max-width:${is80mm ? '48px' : '38px'};
-  max-height:${is80mm ? '48px' : '38px'};
+  max-width:${is80mm ? '57.6px' : '45.6px'};
+  max-height:${is80mm ? '57.6px' : '45.6px'};
   display:block; margin:0 auto ${is80mm ? '6px' : '5px'};
   object-fit:contain; border-radius:4px;
 }
 .biz-name {
   font-family:Arial Black,sans-serif;
   font-weight:900;
-  font-size:${is80mm ? '14px' : '10.5px'};
+  font-size:${is80mm ? '50.4px' : '37.7px'};
   letter-spacing:0.04em;
   text-transform:uppercase;
   color:#000; line-height:1.2;
 }
 .biz-sub {
-  font-size:${is80mm ? '7.5px' : '6.5px'};
-  color:#444; margin-top:3px; line-height:1.5;
+  font-size:${is80mm ? '27px' : '23.3px'};
+  color:#000; margin-top:3px; line-height:1.5;
   font-family:Arial,sans-serif;
 }
 
 /* Section dividers */
-.sep-dash  { border:none; border-top:1px dashed #bbb; margin:0; }
-.sep-solid { border:none; border-top:1px solid #333;  margin:0; }
-.sep-thick { border:none; border-top:2.5px solid #000; margin:0; }
-.sep-double { border:none; border-top:3px double #000; margin:0; }
+.sep-dash  { border:none; border-top:2px dashed #000; margin:0; }
+.sep-solid { border:none; border-top:1.5px solid #000;  margin:0; }
+.sep-thick { border:none; border-top:3px solid #000; margin:0; }
+.sep-double { border:none; border-top:4px double #000; margin:0; }
 
 /* Invoice meta block */
 .meta-block {
@@ -249,17 +249,18 @@ export function generateThermalHTML(inv = {}, shop = {}, printerSize = "58mm") {
   display:flex; justify-content:space-between; align-items:baseline; gap:4px;
 }
 .mk {
-  font-size:${is80mm ? '7.5px' : '6.5px'};
-  color:#555; font-weight:700;
+  font-size:${is80mm ? '22.5px' : '19.5px'};
+  color:#000; font-weight:700;
   text-transform:uppercase; letter-spacing:0.07em;
   font-family:Arial,sans-serif; flex-shrink:0;
 }
 .mv {
-  font-size:${is80mm ? '8px' : '7px'};
+  font-size:${is80mm ? '24px' : '21px'};
   font-weight:700; text-align:right;
   word-break:break-all; overflow-wrap:anywhere; flex:1;
+  color:#000;
 }
-.mv.inv-no { color:#B8521A; font-size:${is80mm ? '8.5px' : '7.5px'}; }
+.mv.inv-no { color:#000; font-size:${is80mm ? '25.5px' : '22.5px'}; }
 
 /* Items section */
 .items-section { padding:0 ${is80mm ? '6px' : '4px'}; }
@@ -267,12 +268,12 @@ export function generateThermalHTML(inv = {}, shop = {}, printerSize = "58mm") {
 /* Column header */
 .col-head {
   display:grid;
-  grid-template-columns:${is80mm ? '1fr 42px 46px' : '1fr 34px 38px'};
-  gap:2px;
+  grid-template-columns: 1.8fr 1.3fr 1.3fr;
+  gap:4px;
   padding:${is80mm ? '5px 0 4px' : '4px 0 3px'};
-  font-size:${is80mm ? '7px' : '6px'};
+  font-size:${is80mm ? '25.2px' : '21.6px'};
   font-weight:900; text-transform:uppercase;
-  letter-spacing:0.08em; color:#333;
+  letter-spacing:0.08em; color:#000;
   font-family:Arial,sans-serif;
 }
 .col-head-c2 { text-align:right; }
@@ -283,104 +284,104 @@ export function generateThermalHTML(inv = {}, shop = {}, printerSize = "58mm") {
 /* Item row */
 .i-row {
   display:grid;
-  grid-template-columns:${is80mm ? '1fr 42px 46px' : '1fr 34px 38px'};
-  gap:2px;
+  grid-template-columns: 1.8fr 1.3fr 1.3fr;
+  gap:4px;
   padding:${is80mm ? '6px 0' : '5px 0'};
   align-items:start;
 }
 .i-c1 { display:flex; gap:${is80mm ? '5px' : '4px'}; align-items:flex-start; }
 .i-num {
-  font-size:${is80mm ? '7px' : '6px'};
-  color:#999; font-weight:700;
+  font-size:${is80mm ? '25.2px' : '21.6px'};
+  color:#000; font-weight:700;
   padding-top:1px; flex-shrink:0;
   font-family:Arial,sans-serif;
 }
 .i-info { flex:1; min-width:0; }
 .i-name {
   font-weight:700;
-  font-size:${is80mm ? '8.5px' : '7.5px'};
+  font-size:${is80mm ? '30.6px' : '27px'};
   color:#000; word-break:break-word;
   overflow-wrap:anywhere; line-height:1.25;
 }
 .i-meta {
-  font-size:${is80mm ? '6.5px' : '5.5px'};
-  color:#777; margin-top:1px;
+  font-size:${is80mm ? '23.4px' : '19.8px'};
+  color:#000; margin-top:1px;
   font-family:Arial,sans-serif; letter-spacing:0.03em;
 }
 .i-disc {
-  font-size:${is80mm ? '6.5px' : '5.5px'};
-  color:#16803c; margin-top:1px;
+  font-size:${is80mm ? '23.4px' : '19.8px'};
+  color:#000; margin-top:1px;
   font-family:Arial,sans-serif;
 }
 
 /* Price columns */
 .i-c2 { display:flex; flex-direction:column; align-items:flex-end; gap:1px; }
-.i-mrp { font-size:${is80mm ? '7px' : '6px'}; color:#888; text-decoration:line-through; }
-.i-price { font-size:${is80mm ? '7.5px' : '6.5px'}; color:#333; font-weight:600; }
-.i-qty { font-size:${is80mm ? '7px' : '6px'}; color:#555; }
+.i-mrp { font-size:${is80mm ? '25.2px' : '21.6px'}; color:#000; text-decoration:line-through; }
+.i-price { font-size:${is80mm ? '27px' : '23.4px'}; color:#000; font-weight:600; }
+.i-qty { font-size:${is80mm ? '25.2px' : '21.6px'}; color:#000; }
 
 .i-c3 { display:flex; flex-direction:column; align-items:flex-end; gap:1px; }
-.i-gross { font-size:${is80mm ? '7px' : '6px'}; color:#aaa; text-decoration:line-through; }
-.i-final { font-size:${is80mm ? '8.5px' : '7.5px'}; font-weight:900; color:#000; }
+.i-gross { font-size:${is80mm ? '25.2px' : '21.6px'}; color:#000; text-decoration:line-through; }
+.i-final { font-size:${is80mm ? '30.6px' : '27px'}; font-weight:900; color:#000; }
 
 /* Summary block */
 .summary-block { padding:${is80mm ? '6px 8px' : '5px 6px'}; font-family:Arial,sans-serif; }
 .sum-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:2px; }
-.sum-label { font-size:${is80mm ? '7.5px' : '6.5px'}; color:#555; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; }
-.sum-val { font-size:${is80mm ? '7.5px' : '6.5px'}; color:#333; font-weight:700; }
+.sum-label { font-size:${is80mm ? '22.5px' : '19.5px'}; color:#000; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; }
+.sum-val { font-size:${is80mm ? '22.5px' : '19.5px'}; color:#000; font-weight:700; }
 
 /* Totals */
 .totals-block { padding:${is80mm ? '6px 8px' : '5px 6px'}; font-family:Arial,sans-serif; }
-.tot-row { display:flex; justify-content:space-between; font-size:${is80mm ? '8px' : '7px'}; margin-bottom:3px; font-weight:600; color:#333; }
-.tot-row.disc-row { color:#16803c; }
-.tot-row.tax-row { color:#555; font-weight:500; }
+.tot-row { display:flex; justify-content:space-between; font-size:${is80mm ? '24px' : '21px'}; margin-bottom:3px; font-weight:600; color:#000; }
+.tot-row.disc-row { color:#000; }
+.tot-row.tax-row { color:#000; font-weight:500; }
 .grand-row { display:flex; justify-content:space-between; align-items:baseline; padding:${is80mm ? '5px 0 4px' : '4px 0 3px'}; margin-top:2px; }
-.grand-label { font-family:Arial Black,sans-serif; font-weight:900; font-size:${is80mm ? '11px' : '9px'}; color:#000; text-transform:uppercase; letter-spacing:0.04em; }
-.grand-val { font-family:Arial Black,sans-serif; font-weight:900; font-size:${is80mm ? '13px' : '10.5px'}; color:#000; }
-.hindi-total { display:flex; justify-content:space-between; font-size:${is80mm ? '8px' : '7px'}; color:#555; margin-top:2px; font-weight:500; }
+.grand-label { font-family:Arial Black,sans-serif; font-weight:900; font-size:${is80mm ? '33px' : '27px'}; color:#000; text-transform:uppercase; letter-spacing:0.04em; }
+.grand-val { font-family:Arial Black,sans-serif; font-weight:900; font-size:${is80mm ? '39px' : '31.5px'}; color:#000; }
+.hindi-total { display:flex; justify-content:space-between; font-size:${is80mm ? '24px' : '21px'}; color:#000; margin-top:2px; font-weight:500; }
 
 /* Savings highlight */
-.savings-box { background:#f0fdf4; border:1px solid #86efac; border-radius:3px; padding:${is80mm ? '4px 8px' : '3px 6px'}; margin:${is80mm ? '6px 8px' : '5px 6px'}; display:flex; justify-content:space-between; align-items:center; }
-.savings-label { font-size:${is80mm ? '7.5px' : '6.5px'}; color:#15803d; font-weight:700; font-family:Arial,sans-serif; text-transform:uppercase; letter-spacing:0.05em; }
-.savings-val { font-size:${is80mm ? '8.5px' : '7.5px'}; color:#15803d; font-weight:900; font-family:Arial Black,Arial,sans-serif; }
+.savings-box { background:#fff; border:1.5px solid #000; border-radius:3px; padding:${is80mm ? '4px 8px' : '3px 6px'}; margin:${is80mm ? '6px 8px' : '5px 6px'}; display:flex; justify-content:space-between; align-items:center; }
+.savings-label { font-size:${is80mm ? '22.5px' : '19.5px'}; color:#000; font-weight:700; font-family:Arial,sans-serif; text-transform:uppercase; letter-spacing:0.05em; }
+.savings-val { font-size:${is80mm ? '25.5px' : '22.5px'}; color:#000; font-weight:900; font-family:Arial Black,Arial,sans-serif; }
 
 /* Terms block */
-.terms-block { font-family:Arial,sans-serif; font-size:${is80mm ? '6.5px' : '5.5px'}; font-weight:600; text-align:center; color:#555; padding:${is80mm ? '4px 8px' : '3px 6px'}; line-height:1.3; }
+.terms-block { font-family:Arial,sans-serif; font-size:${is80mm ? '19.5px' : '16.5px'}; font-weight:600; text-align:center; color:#000; padding:${is80mm ? '4px 8px' : '3px 6px'}; line-height:1.3; }
 
 /* Badges */
 .badges { display:flex; gap:4px; flex-wrap:wrap; padding:${is80mm ? '0 8px 6px' : '0 6px 5px'}; }
-.badge { font-size:${is80mm ? '7px' : '6px'}; font-weight:900; letter-spacing:0.06em; padding:${is80mm ? '2px 7px' : '2px 5px'}; border-radius:2px; text-transform:uppercase; border:1px solid currentColor; font-family:Arial,sans-serif; background:#fff; }
-.cash { color:#166534; }
-.upi  { color:#4c1d95; }
-.card { color:#991b1b; }
-.b2c  { color:#1e3a8a; }
-.b2b  { color:#78350f; }
+.badge { font-size:${is80mm ? '21px' : '18px'}; font-weight:900; letter-spacing:0.06em; padding:${is80mm ? '2px 7px' : '2px 5px'}; border-radius:2px; text-transform:uppercase; border:1.5px solid currentColor; font-family:Arial,sans-serif; background:#fff; }
+.cash { color:#000; }
+.upi  { color:#000; }
+.card { color:#000; }
+.b2c  { color:#000; }
+.b2b  { color:#000; }
 
 /* Points row */
-.points-row { display:flex; justify-content:space-between; padding:${is80mm ? '4px 8px' : '3px 6px'}; font-size:${is80mm ? '7px' : '6px'}; color:#666; font-family:Arial,sans-serif; border-top:1px dashed #ddd; }
+.points-row { display:flex; justify-content:space-between; padding:${is80mm ? '4px 8px' : '3px 6px'}; font-size:${is80mm ? '21px' : '18px'}; color:#000; font-family:Arial,sans-serif; border-top:1.5px dashed #000; }
 
 /* Footer */
 .rcpt-foot { text-align:center; padding:${is80mm ? '8px 6px 10px' : '6px 5px 8px'}; }
-.thank-msg { font-size:${is80mm ? '8px' : '7px'}; letter-spacing:0.12em; color:#333; font-family:Arial,sans-serif; font-weight:700; text-transform:uppercase; margin-bottom:${is80mm ? '10px' : '8px'}; }
-.upi-label { font-size:${is80mm ? '7px' : '6px'}; font-weight:700; letter-spacing:0.15em; color:#333; text-transform:uppercase; font-family:Arial,sans-serif; margin-bottom:5px; }
-.qr-img { display:block; margin:0 auto 4px; object-fit:contain; }
-.upi-id { font-size:${is80mm ? '7.5px' : '6.5px'}; color:#333; font-weight:700; word-break:break-all; font-family:Arial,sans-serif; margin-bottom:${is80mm ? '10px' : '8px'}; }
+.thank-msg { font-size:${is80mm ? '24px' : '21px'}; letter-spacing:0.12em; color:#000; font-family:Arial,sans-serif; font-weight:700; text-transform:uppercase; margin-bottom:${is80mm ? '10px' : '8px'}; }
+.upi-label { font-size:${is80mm ? '21px' : '18px'}; font-weight:700; letter-spacing:0.15em; color:#000; text-transform:uppercase; font-family:Arial,sans-serif; margin-bottom:5px; }
+.qr-img { display:block; margin:0 auto 4px; object-fit:contain; filter: grayscale(1) contrast(100); }
+.upi-id { font-size:${is80mm ? '22.5px' : '19.5px'}; color:#000; font-weight:700; word-break:break-all; font-family:Arial,sans-serif; margin-bottom:${is80mm ? '10px' : '8px'}; }
 .barcode-wrap { display:flex; flex-direction:column; align-items:center; margin-top:${is80mm ? '10px' : '8px'}; }
 .barcode-svg { width:${is80mm ? '150px' : '110px'}; height:${is80mm ? '26px' : '20px'}; display:block; margin-bottom:3px; }
-.barcode-no { font-size:${is80mm ? '7.5px' : '6.5px'}; color:#444; letter-spacing:0.12em; font-family:Arial,sans-serif; }
-.visit-again { margin-top:${is80mm ? '10px' : '8px'}; border-top:1px dashed #ccc; padding-top:${is80mm ? '7px' : '6px'}; }
-.visit-l1 { font-size:${is80mm ? '7.5px' : '6.5px'}; font-weight:700; letter-spacing:0.1em; color:#444; text-transform:uppercase; font-family:Arial,sans-serif; margin-bottom:2px; }
-.visit-l2 { font-family:Arial Black,Arial,sans-serif; font-size:${is80mm ? '8.5px' : '7.5px'}; font-weight:900; letter-spacing:0.12em; color:#000; text-transform:uppercase; }
+.barcode-no { font-size:${is80mm ? '22.5px' : '19.5px'}; color:#000; letter-spacing:0.12em; font-family:Arial,sans-serif; }
+.visit-again { margin-top:${is80mm ? '10px' : '8px'}; border-top:1.5px dashed #000; padding-top:${is80mm ? '7px' : '6px'}; }
+.visit-l1 { font-size:${is80mm ? '22.5px' : '19.5px'}; font-weight:700; letter-spacing:0.1em; color:#000; text-transform:uppercase; font-family:Arial,sans-serif; margin-bottom:2px; }
+.visit-l2 { font-family:Arial Black,Arial,sans-serif; font-size:${is80mm ? '25.5px' : '22.5px'}; font-weight:900; letter-spacing:0.12em; color:#000; text-transform:uppercase; }
 
 /* Bottom accent */
-.bot-bar { background:#111; color:#fff; text-align:center; padding:${is80mm ? '4px' : '3px'}; font-size:${is80mm ? '6.5px' : '5.5px'}; letter-spacing:0.2em; font-family:Arial,sans-serif; text-transform:uppercase; }
+.bot-bar { background:#000; color:#fff; text-align:center; padding:${is80mm ? '4px' : '3px'}; font-size:${is80mm ? '19.5px' : '16.5px'}; letter-spacing:0.2em; font-family:Arial,sans-serif; text-transform:uppercase; }
 
 /* Print */
 @media print {
   html,body { width:${is80mm ? '80mm' : '58mm'} !important; margin:0 !important; padding:0 !important; background:#fff !important; }
   @page { size:${is80mm ? '80mm' : '58mm'} auto; margin:0mm; }
   * { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
-  .rcpt { box-shadow:none !important; border:none !important; width:${is80mm ? '72mm' : '46mm'} !important; max-width:${is80mm ? '72mm' : '46mm'} !important; margin:0 auto !important; }
+  .rcpt { box-shadow:none !important; border:none !important; width:100% !important; max-width:100% !important; margin:0 !important; padding:${is80mm ? '0 5mm' : '0 3mm'} !important; }
 }
 </style>`;
 
@@ -510,6 +511,7 @@ export function generateThermalHTML(inv = {}, shop = {}, printerSize = "58mm") {
   </div>
 
   <div class="bot-bar">Powered by EasyBMT</div>
+  <div style="height: 15mm;"></div>
 
 </div>
 </body>
@@ -690,7 +692,7 @@ async function renderThermalToPDFBlob(inv, shop, printerSize = "58mm") {
 }
 
 // Helper: render invoice HTML to a canvas, then to PDF blob
-async function renderInvoiceToPDFBlob(inv, shop, forceA4 = false, documentType = null, templateId = null) {
+export async function renderInvoiceToPDFBlob(inv, shop, forceA4 = false, documentType = null, templateId = null) {
   // Check if invoice is B2C (Default is B2C if billing_type is empty)
   // Enforce A4 if explicitly requested OR if created from general invoices page (source === 'general')
   // Fallback: If it's a legacy invoice without source, check if invoice_number lacks 'POS'
@@ -904,3 +906,137 @@ Please Visit Again`;
     }
   }
 }
+
+// Convert HTML thermal slip layout into raw monochrome graphical ESC/POS raster print bytes
+export async function renderThermalToEscPosBytes(inv, shop, printerSize = "58mm") {
+  const is80mm = printerSize === "80mm";
+  const widthPx = is80mm ? 576 : 384;
+  const widthBytes = widthPx / 8; // 72 or 48 bytes
+
+  const html = generateThermalHTML(inv, shop, printerSize);
+
+  const tempDiv = document.createElement("div");
+  tempDiv.style.position = "absolute";
+  tempDiv.style.left = "-9999px";
+  tempDiv.style.top = "0";
+  tempDiv.style.width = `${widthPx}px`;
+  tempDiv.style.background = "#ffffff";
+  tempDiv.style.padding = "0";
+  tempDiv.style.display = "flex";
+  tempDiv.style.justifyContent = "center";
+  tempDiv.innerHTML = html;
+  document.body.appendChild(tempDiv);
+
+  await waitForImages(tempDiv);
+  lockImageDimensions(tempDiv);
+
+  try {
+    if (document.fonts && document.fonts.ready) {
+      await document.fonts.ready;
+    }
+  } catch (e) {
+    console.warn("Fonts load promise failed", e);
+  }
+
+  // Inject stabilizer styles for html2canvas
+  const stabilizerStyle = document.createElement("style");
+  stabilizerStyle.innerHTML = `
+    body, html {
+      background: #ffffff !important;
+      background-color: #ffffff !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+    .rcpt {
+      box-shadow: none !important;
+      border: none !important;
+      padding: 6px !important;
+      margin: 0 auto !important;
+      background: #ffffff !important;
+    }
+    .rcpt::before, .rcpt::after {
+      display: none !important;
+      content: none !important;
+    }
+    * {
+      -webkit-font-smoothing: antialiased !important;
+      -moz-osx-font-smoothing: grayscale !important;
+      font-variant-numeric: lnum tabular-nums !important;
+    }
+  `;
+  tempDiv.appendChild(stabilizerStyle);
+
+  try {
+    const canvas = await html2canvas(tempDiv, {
+      scale: 1, // Native printer resolution
+      useCORS: true,
+      backgroundColor: "#ffffff",
+      logging: false,
+      width: widthPx,
+      windowWidth: widthPx,
+      windowHeight: tempDiv.scrollHeight + 50,
+    });
+
+    document.body.removeChild(tempDiv);
+
+    const ctx = canvas.getContext("2d");
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const pixels = imgData.data;
+    const height = canvas.height;
+
+    // Convert pixels to binary monochrome bitstream (ESC/POS GS v 0 format)
+    const dataBytes = [];
+    for (let y = 0; y < height; y++) {
+      for (let xByte = 0; xByte < widthBytes; xByte++) {
+        let byteVal = 0;
+        for (let bit = 0; bit < 8; bit++) {
+          const x = xByte * 8 + bit;
+          let isBlack = 0; // default white
+          if (x < canvas.width) {
+            const idx = (y * canvas.width + x) * 4;
+            const r = pixels[idx];
+            const g = pixels[idx + 1];
+            const b = pixels[idx + 2];
+            const a = pixels[idx + 3];
+
+            // If pixel is semi-transparent, treat as white, otherwise check brightness threshold
+            if (a >= 128) {
+              const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+              if (luminance < 200) { // threshold value (increased from 140 to 200 for bolder, high-contrast text on physical printouts)
+                isBlack = 1;
+              }
+            }
+          }
+          byteVal = (byteVal << 1) | isBlack;
+        }
+        dataBytes.push(byteVal);
+      }
+    }
+
+    // Build the ESC/POS GS v 0 raster print package
+    // Reset printer: ESC @ (0x1B, 0x40)
+    // GS v 0 m xL xH yL yH d1...dk
+    const escPos = [0x1B, 0x40];
+
+    const m = 0; // Normal mode
+    const xL = widthBytes & 0xFF;
+    const xH = (widthBytes >> 8) & 0xFF;
+    const yL = height & 0xFF;
+    const yH = (height >> 8) & 0xFF;
+
+    escPos.push(0x1D, 0x76, 0x30, m, xL, xH, yL, yH);
+    escPos.push(...dataBytes);
+
+    // Feed and cut: Feed 3 lines (ESC d 3), Cut (GS V 66 0)
+    escPos.push(0x1B, 0x64, 0x03);
+    escPos.push(0x1D, 0x56, 0x41, 0x03); // Cut command
+
+    return new Uint8Array(escPos);
+  } catch (err) {
+    if (document.body.contains(tempDiv)) {
+      document.body.removeChild(tempDiv);
+    }
+    throw err;
+  }
+}
+

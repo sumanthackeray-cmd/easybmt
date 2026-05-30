@@ -529,6 +529,29 @@ export function generateEscPosPayload(invoice, shop, isDuplicate = false) {
     if (double) add(ESC_POS_COMMANDS.DOUBLE_SIZE_OFF);
   };
 
+  const addQRCode = (content, moduleSize = 8) => {
+    // 1. Set model (Model 2)
+    add([0x1D, 0x28, 0x6B, 0x04, 0x00, 0x31, 0x41, 0x32, 0x00]);
+    // 2. Set module size
+    add([0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x43, moduleSize]);
+    // 3. Set EC level (M)
+    add([0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x45, 0x31]);
+    
+    // 4. Store data
+    const bytes = [];
+    for (let i = 0; i < content.length; i++) {
+      bytes.push(content.charCodeAt(i) & 0xFF);
+    }
+    const len = bytes.length + 3;
+    const pL = len % 256;
+    const pH = Math.floor(len / 256);
+    add([0x1D, 0x28, 0x6B, pL, pH, 0x31, 0x50, 0x30]);
+    add(bytes);
+    
+    // 5. Print the QR code
+    add([0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x51, 0x30]);
+  };
+
   add(ESC_POS_COMMANDS.RESET);
 
   if (isDuplicate) {
@@ -585,12 +608,19 @@ export function generateEscPosPayload(invoice, shop, isDuplicate = false) {
 
   if (shop.upi_id) {
     addLine("Scan to Pay via UPI", "center", true);
+    add(ESC_POS_COMMANDS.ALIGN_CENTER);
+    const upiURI = `upi://pay?pa=${shop.upi_id}&pn=${encodeURIComponent(shop.shop_name || 'Merchant')}&am=${invoice.grand_total?.toFixed(2)}&cu=INR`;
+    addQRCode(upiURI, 8);
+    add([10]); // vertical line spacing
     addLine(`UPI ID: ${shop.upi_id}`, "center");
     addLine("-".repeat(width), "center");
   }
 
   addLine("*** Thank You for Shopping! ***", "center");
-  add(ESC_POS_COMMANDS.FEED_3_LINES);
+  addLine("Please visit again", "center");
+  addLine("Powered by EasyBMT", "center");
+  // Feed 6 lines for clean 15mm tear-off spacing
+  add([0x1B, 0x64, 0x06]);
   add(ESC_POS_COMMANDS.CUT);
 
   return new Uint8Array(encoder);

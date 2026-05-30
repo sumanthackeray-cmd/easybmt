@@ -114,7 +114,7 @@ export function generateThermalHTML(inv = {}, shop = {}, printerSize = "58mm") {
   if (upiId) {
     const upiUri = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(shopName)}&am=${grandTotal}&cu=INR`;
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(upiUri)}`;
-    const qrSize = is80mm ? '96px' : '72px';
+    const qrSize = '35mm';
     upiFooterHtml = `
     <div class="upi-label">Scan &amp; Pay via UPI</div>
     <img class="qr-img" src="${qrUrl}" crossorigin="anonymous" alt="UPI QR" style="width:${qrSize};height:${qrSize};">
